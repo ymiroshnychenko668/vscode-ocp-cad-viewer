@@ -91,22 +91,44 @@ def ignore_camera_warnings():
 
 # Last bounding box check
 
-LAST_BBOX_SIZE = None
+LAST_BBOX = None
 
 
-def get_last_bbox_size():
-    return LAST_BBOX_SIZE
+def get_last_bbox():
+    return LAST_BBOX
 
 
-def set_last_bbox_size(bbox):
-    global LAST_BBOX_SIZE
-    LAST_BBOX_SIZE = bbox
+def set_last_bbox(bbox):
+    global LAST_BBOX
+    LAST_BBOX = bbox
+
+
+def same_bounding_box(bb1, bb2, tol=1e-6):
+    """Whether two bounding boxes (dicts with xmin/ymin/zmin/xmax/ymax/zmax) match
+    within a diagonal-relative tolerance. Either being None → False.
+
+    Used as the "same model" heuristic deciding whether to keep the viewer's current
+    clip settings on a reset_camera=KEEP show: same bbox ⇒ same clip-slider range, so
+    keeping the current clip values makes sense regardless of the exact geometry.
+    """
+    if bb1 is None or bb2 is None:
+        return False
+    diag = math.hypot(
+        bb1["xmax"] - bb1["xmin"],
+        bb1["ymax"] - bb1["ymin"],
+        bb1["zmax"] - bb1["zmin"],
+    )
+    eps = tol * max(1.0, diag)
+    return all(
+        abs(bb1[k] - bb2[k]) <= eps
+        for k in ("xmin", "ymin", "zmin", "xmax", "ymax", "zmax")
+    )
 
 
 def check_camera_warnings(new_bb):
     """Check if new bounding box may cause visibility issues with fixed camera."""
 
-    old_bb = get_last_bbox_size()
+    old_bb = get_last_bbox()
     if old_bb is None:
         return
 

@@ -81,7 +81,9 @@ from ocp_vscode.comms import is_pytest
 from ocp_vscode.utils import (
     check_camera_warnings,
     camera_keep_warning,
-    set_last_bbox_size,
+    get_last_bbox,
+    set_last_bbox,
+    same_bounding_box,
     set_last_paths,
 )
 from ocp_vscode.config import (
@@ -288,49 +290,6 @@ def _tessellate(
             conf.get("default_vertexcolor", oc.VERTEX_COLOR)
         ).percentage
 
-    # only use clipping settings when reset_camera is not RESET
-    if reset_camera == Camera.RESET or kwargs.get("reset_camera") == Camera.RESET:
-        clip_defaults = {
-            k: v for k, v in get_defaults(port=port).items() if k.startswith("clip")
-        }
-        if conf.get("clip_slider_0") is not None:
-            del conf["clip_slider_0"]
-        if conf.get("clip_slider_1") is not None:
-            del conf["clip_slider_1"]
-        if conf.get("clip_slider_2") is not None:
-            del conf["clip_slider_2"]
-        if conf.get("clip_normal_0") is not None:
-            conf["clip_normal_0"] = None
-        if conf.get("clip_normal_1") is not None:
-            conf["clip_normal_1"] = None
-        if conf.get("clip_normal_2") is not None:
-            conf["clip_normal_2"] = None
-        if conf.get("clip_intersection") is not None:
-            conf["clip_intersection"] = False
-        if conf.get("clip_planes") is not None:
-            conf["clip_planes"] = False
-        if conf.get("clip_object_colors") is not None:
-            conf["clip_object_colors"] = False
-
-        conf.update(clip_defaults)
-
-        # Reset zebra parameters when reset_camera is RESET
-        zebra_defaults = {
-            k: v for k, v in get_defaults().items() if k.startswith("zebra")
-        }
-        if conf.get("zebra_count") is not None:
-            del conf["zebra_count"]
-        if conf.get("zebra_opacity") is not None:
-            del conf["zebra_opacity"]
-        if conf.get("zebra_direction") is not None:
-            del conf["zebra_direction"]
-        if conf.get("zebra_color_scheme") is not None:
-            del conf["zebra_color_scheme"]
-        if conf.get("zebra_mapping_mode") is not None:
-            del conf["zebra_mapping_mode"]
-
-        conf.update(zebra_defaults)
-
     if kwargs.get("helper_scale") is not None:
         conf["helper_scale"] = kwargs["helper_scale"]
 
@@ -433,11 +392,7 @@ def _tessellate(
 
     params["_splash"] = False  # after the first show, _splash is False
 
-    if kwargs.get("reset_camera") is not None and isinstance(
-        kwargs["reset_camera"], Enum
-    ):
-        params["reset_camera"] = kwargs["reset_camera"].value
-
+    # replace enums with their values
     for key in (
         "studio_environment",
         "studio_background",
@@ -445,6 +400,7 @@ def _tessellate(
         "studio_texture_mapping",
         "analysis_tool",
         "tab",
+        "reset_camera",
     ):
         if isinstance(params.get(key), Enum):
             params[key] = params[key].value
@@ -491,13 +447,49 @@ def _tessellate(
     # add global bounding box
     shapes["bb"] = bb
 
+    # clip_slider_* / clip_normal_* are model-dependent "insight" params: a slider
+    # position or plane normal only makes sense for a given geometry. Keep the
+    # viewer's current values only when keeping the camera AND it's the same model
+    # (reset_camera==KEEP is reused as the "keep insight" signal); otherwise reset
+    # them to the defaults (+ explicit kwargs). The clip checkboxes (intersection /
+    # planes / object_colors) and zebra are viewer modes like axes/transparent —
+    # they always persist via the viewer status and are NOT reset here. Compared
+    # BEFORE set_last_bbox(bb) below, so get_last_bbox() is the previous model.
+    same_model = same_bounding_box(bb, get_last_bbox())
+    if not (
+        (reset_camera == Camera.KEEP or kwargs.get("reset_camera") == Camera.KEEP)
+        and same_model
+    ):
+        insight_keys = [
+            "clip_slider_0",
+            "clip_slider_1",
+            "clip_slider_2",
+            "clip_normal_0",
+            "clip_normal_1",
+            "clip_normal_2",
+        ]
+        clip_defaults = {
+            k: v for k, v in get_defaults(port=port).items() if k in insight_keys
+        }
+
+        for key in insight_keys:
+            if params.get(key) is not None:
+                del params[key]
+
+        # Reset the model-dependent clip insight to defaults (+ explicit kwargs)
+        params.update(clip_defaults)
+
+        for k, v in kwargs.items():
+            if k in insight_keys:
+                params[k] = v
+
     if params["reset_camera"] == "keep":
         camera_keep_warning(
             "reset_camera is set to KEEP. If shown objects are not visible use "
             "the 'resize' and a 'view' button"
         )
         check_camera_warnings(bb)
-    set_last_bbox_size(bb)
+    set_last_bbox(bb)
 
     return (
         instances,
@@ -561,21 +553,6 @@ def _convert(
             "config": config,
             "count": count_shapes,
         }, mapping
-
-
-class Progress:
-    """Progress indicator for tessellation"""
-
-    def __init__(self, levels=None):
-        if levels is None:
-            self.levels = ["+c-*"]
-        else:
-            self.levels = levels
-
-    def update(self, mark="+"):
-        """Update progress indicator"""
-        if mark in self.levels:
-            print(mark, end="", flush=True)
 
 
 def align_attrs(attr_list, length, default, tag, explode=True):
