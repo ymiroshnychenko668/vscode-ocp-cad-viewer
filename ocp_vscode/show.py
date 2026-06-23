@@ -40,6 +40,7 @@ from ocp_tessellate.convert import (
     get_normal_len,
     tessellate_group,
     to_ocpgroup,
+    Progress,
 )
 from ocp_tessellate.ocp_utils import (
     is_build123d,
@@ -63,7 +64,7 @@ from ocp_vscode.colors import BaseColorMap, get_colormap
 from ocp_vscode.utils import is_pymat_material, is_build123d_material
 
 if os.environ.get("JUPYTER_CADQUERY") == "1":
-    from jupyter_cadquery.comms import (  # pyright: ignore[reportMissingImports]
+    from jupyter_cadquery.comms import (  # pyright: ignore[reportMissingImports]  # ty:ignore[unresolved-import]
         send_backend,
         send_command,
         send_data,
@@ -211,6 +212,25 @@ def _extract_material_objects(part_group):
     return extracted if extracted else None
 
 
+class ShowProgress(Progress):
+    """Progress indicator for tessellation"""
+
+    def __init__(self, levels=None):
+        if levels is None:
+            self.levels = "+c-*"
+        else:
+            self.levels = levels
+
+    def update(self, mark="+"):
+        """Update progress indicator"""
+        if mark in self.levels:
+            print(mark, end="", flush=True)
+
+    @property
+    def none(self):
+        return self.levels == ""
+
+
 def _tessellate(
     *cad_objs,
     names=None,
@@ -318,9 +338,6 @@ def _tessellate(
 
     if timeit is None:
         timeit = False
-
-    if progress is None:
-        progress = Progress([c for c in "-+c"])
 
     with Timer(timeit, "", "to_ocpgroup", 1):
         changed_config = get_changed_config(port=port)
@@ -439,8 +456,8 @@ def _tessellate(
         print("\ntessellation parameters:\n", params)
 
     with Timer(timeit, "", "tessellate", 1):
-        instances, shapes, mapping = tessellate_group(
-            part_group, instances, params, progress, params.get("timeit")
+        instances, shapes, mapping = tessellate_group(  # ty:ignore[invalid-assignment] (typing bug in ocp-tessellate)
+            part_group, instances, params, progress, params.get("timeit", False)
         )
 
     # `params["states"]` is normally populated from `conf["states"]` (the
@@ -503,9 +520,6 @@ def _convert(
     **kwargs,
 ):
     timeit = preset("timeit", kwargs.get("timeit"), port=kwargs.get("port"))
-
-    if progress is None:
-        progress = Progress([c for c in "-+c"])
 
     instances, shapes, config, count_shapes, mapping, extracted_materials = _tessellate(
         *cad_objs,
@@ -824,7 +838,7 @@ def _show(*cad_objs, **kwargs):
     materials = kwargs.get("materials")
     modes = kwargs.get("modes")
     default_edgecolor = kwargs.get("default_edgecolor")
-    progress = kwargs.get("progress")
+    progress = ShowProgress(kwargs.get("progress", "+-*c"))
     _force_in_debug = kwargs.get("_force_in_debug")
 
     if (
@@ -911,8 +925,6 @@ def _show(*cad_objs, **kwargs):
     if default_edgecolor is not None:
         default_edgecolor = Color(default_edgecolor)
 
-    progress = Progress([] if progress is None else [c for c in progress])
-
     with Timer(timeit, "", "overall"):
         t, mapping = _convert(
             *cad_objs,
@@ -930,7 +942,7 @@ def _show(*cad_objs, **kwargs):
         else:
             LAST_CALL = "other"
 
-    if progress is not None:
+    if not progress.none:
         print()
 
     if is_pytest():
@@ -940,7 +952,7 @@ def _show(*cad_objs, **kwargs):
         viewer = send_data(t, port=port, timeit=timeit)
 
     if is_jupyter_cadquery:
-        send_backend({"model": mapping}, jcv_id=viewer.widget.id, timeit=timeit)
+        send_backend({"model": mapping}, jcv_id=viewer.widget.id, timeit=timeit)  # ty:ignore[unknown-argument]
         return viewer
     else:
         send_backend({"model": mapping}, port=port, timeit=timeit)
@@ -1619,7 +1631,7 @@ def show_all(
 
     if variables is None:
         cf = inspect.currentframe()
-        variables = cf.f_back.f_locals
+        variables = cf.f_back.f_locals  # ty:ignore[unresolved-attribute]
 
     if exclude is None:
         exclude = []
