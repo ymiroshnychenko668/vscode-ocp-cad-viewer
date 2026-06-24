@@ -36,6 +36,8 @@ dist: clean
 	@cp node_modules/three-cad-viewer/dist/three-cad-viewer.esm.js ocp_vscode/static/js
 	@cp node_modules/three-cad-viewer/dist/three-cad-viewer.css ocp_vscode/static/css
 	@cp src/logo.ts ocp_vscode/static/js/logo.js
+	@mkdir -p ocp_vscode/static/icon
+	@cp resources/ocp-eye.png ocp_vscode/static/icon/ocp-eye.png
 
 	@python -m build -n
 	vsce package --yarn
