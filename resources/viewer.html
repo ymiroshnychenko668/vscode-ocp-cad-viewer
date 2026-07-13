@@ -717,36 +717,29 @@ limitations under the License.
                     const new_keys = Object.keys(new_states);
 
                     if (config.states) {
-                        // Explicit states from modes parameter take precedence
-                        Object.keys(config.states).forEach((key) => {
-                            viewer.setState(key, config.states[key]);
-                        });
+                        // Explicit states from modes parameter take precedence.
+                        // Batch via setStates: one tree update + one re-render
+                        viewer.setStates(config.states);
                     } else {
+                        // Restore the user's prior visibility choices for objects
+                        // that survive into the new model. Collect the changed keys
+                        // first, then apply them in a single batched setStates — a
+                        // per-key setState loop here is the same O(n^2) repaint storm
+                        // as the config.states path (toggling all edges off would
+                        // re-render the whole scene once per object otherwise).
+                        const restore = {};
                         Object.keys(old_states).forEach((key) => {
-                            if (new_keys.includes(key)) {
-                                if (
-                                    new_states[key][0] !== old_states[key][0] ||
-                                    new_states[key][1] !== old_states[key][1]
-                                ) {
-                                    if (data.config.measure_tools) {
-                                        viewer.treeview.handleStateChange(
-                                            "node",
-                                            key,
-                                            0,
-                                            old_states[key][0]
-                                        );
-                                        viewer.treeview.handleStateChange(
-                                            "node",
-                                            key,
-                                            1,
-                                            old_states[key][1]
-                                        );
-                                    } else {
-                                        viewer.setState(key, old_states[key]);
-                                    }
-                                }
+                            if (
+                                new_keys.includes(key) &&
+                                (new_states[key][0] !== old_states[key][0] ||
+                                    new_states[key][1] !== old_states[key][1])
+                            ) {
+                                restore[key] = old_states[key];
                             }
                         });
+                        if (Object.keys(restore).length > 0) {
+                            viewer.setStates(restore);
+                        }
                     }
                     timer.split("states updated");
 
@@ -872,12 +865,19 @@ limitations under the License.
                                 viewer.display.setTool(newTool, true);
                             }
                         } else if (key === "states") {
-                            const states = Object.keys(viewer.treeview.getStates());
+                            // Batch via setStates: one re-render instead of a full
+                            // repaint per key (a per-key setState loop over a large
+                            // model freezes VS Code / the machine).
+                            const valid = Object.keys(viewer.treeview.getStates());
+                            const newStates = {};
                             Object.keys(data.config[key]).forEach((key2) => {
-                                if (states.includes(key2)) {
-                                    viewer.setState(key2, data.config[key][key2]);
+                                if (valid.includes(key2)) {
+                                    newStates[key2] = data.config[key][key2];
                                 }
                             });
+                            if (Object.keys(newStates).length > 0) {
+                                viewer.setStates(newStates);
+                            }
                         } else if (key === "tab") {
                             viewer.setActiveTab(data.config[key]);
                         } else if (key === "clip_intersection") {
