@@ -196,20 +196,12 @@ def get_last_paths():
     return LAST_PATHS
 
 
-# To avoid dependency to py-materials
-def is_pymat_material(material):
-    return (
-        hasattr(material, "__module__")
-        and material.__module__ == "pymat.core"
-        and material.__class__.__name__ == "Material"
-    )
-
-
 # To avoid dependency to build123d
 def is_build123d_material(material):
     return (
-        hasattr(material, "_material")
-        and hasattr(material, "_vis")
+        hasattr(material, "pbr")
+        and hasattr(material, "finish")
+        and hasattr(material, "material")
     )
 
 
