@@ -2,7 +2,7 @@
 import json
 
 import orjson
-from bd_ext import clean_text_overlaps
+from bd_ext import CleanText  # see https://github.com/bernhard-42/bd_ext/tree/main
 from build123d import *
 
 from ocp_vscode import *
@@ -11,14 +11,13 @@ from ocp_vscode.show import _convert
 
 # %%
 
-text = clean_text_overlaps(
-    Text(
-        "OCP",
-        20,
-        font="Montserrat",
-        font_path="/Users/bernhard/Downloads/Montserrat/static/Montserrat-ExtraBold.ttf",
-    )
+text = CleanText(
+    "OCP",
+    20,
+    font="Montserrat",
+    font_path="/Users/bernhard/Downloads/Montserrat/static/Montserrat-ExtraBold.ttf",
 )
+
 ocp = extrude(text, 2)
 ocp.color = "#55a0e3"
 show(ocp)
