@@ -37,7 +37,7 @@ show(cq.Workplane().box(1, 2, 3))
 
 ### Installation within VS Code
 
-1. Open the VS Code Marketplace, and search and install _OCP CAD Viewer 3.4.0_.
+1. Open the VS Code Marketplace, and search and install _OCP CAD Viewer 4.0.0_.
 
     Afterwards the OCP viewer is available in the VS Code sidebar:
 
@@ -200,28 +200,47 @@ make tests
 
 ## Changes
 
-## v3.4.0
+## 4.0.0
 
-**Features**
+Major release — the picking/selection architecture has been rewritten in [three-cad-viewer](https://github.com/bernhard-42/three-cad-viewer), leading to chages for OCP CAD Viewer:
 
-- Detect in `show` and in the extension when backend is not running and show a Python warning and a VS Code error message
-- Keep the last active tab active, so iterating over a feature in clipping or studio is easier
-- Reuse the viewer component across show commands (clear instead of restart), allowing to keep active tab smoothly
-- Properties tool now also shows diameter of circle and ellipse [three-cad-viewer #39](https://github.com/bernhard-42/three-cad-viewer/issues/39)
-- The `analysis_tool` parameter allows to activate a specific analysis tool (`AnalysisTool.PROPERTIES`, `AnalysisTool.DISTANCE`, `AnalysisTool.SELECT`). It is consistently available with all `show` commands and `set_viewer_config`. [#219](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues/219)
-- The `tab` parameter allows to activate a specific UI tab (`UiTab.TREE`, `UiTab.CLIP`, `UiTab.ZEBRA`, `UiTab.Material`, `UiTab.STUDIO`). It is consistently available with all `show` commands and `set_viewer_config`.
-- `ShapeList`s are now expanded like normal lists to not hide the internal structure [#220](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues/220)
-- Adapt material support to latest changes in build123d
-- Rework and significant enhancement of the docs
+- **New picking system**
+    - Replace the CPU `THREE.Raycaster` and the duplicated "exploded" scene graph with GPU **id-based picking** over a single compact scene graph, highlighting is GPU shader-driven.
+    - Hover, selection, measurement and double-click resolve the component under the cursor from an offscreen id buffer, selection behavior is unchanged, with much better scaling to large models.
+    - The topology filter (All / Vertex / Edge / Face / Solid) is always available for CAD models, enabling whole-solid hover highlighting without a tool.
+    - Renamed the "None" option in object filters to "All".
 
-**Fixes**
+- **New mesh based Measurement**
+    - Add a built-in TypeScript mesh-based measurement backend so the measure tools (distance / properties) work without the external Python (`ocp_vscode`) backend
+    - Computes real values (area, length, volume, bounding box, min/center distance, angle) from the tessellated mesh; `shape_type`/`geom_type` are exact (taken from the tessellation `face_types`/`edge_types`).
+    - The distance measurement's mesh minimum-distance search uses a BVH (AABB-tree branch-and-bound) — exact and sub-quadratic, so measuring between large or finely-tessellated faces (spheres, helices/springs) do not freeze the viewer for many seconds (resolved in milliseconds).
 
-- Clean up backend shutdown on closing VS Code window or on quitting VS Code (cmd-Q/ctrl-Q) [three-cad-viewer #40](https://github.com/bernhard-42/three-cad-viewer/issues/40)
-- Edge, vertices and faces show color indicator in the navigation tree again [three-cad-viewer #41](https://github.com/bernhard-42/three-cad-viewer/issues/41)
-- Error message explains to drop --backend as a parameter when added accidentally to the standalone startup command [#221](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues/221)
-- Lists and dicts of assemblies do not omit the label of the assembly when it has only one child [#224](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues/224)
-- The parameter `modes` of `show*` is now properly threaded through ocp-tessellate so that skipping non-CAD objects is properly handled [#226](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues/226)
-- Fixed race condition that could lead to a wrong dialog about missing ocp_vscode package in the current Python environment
-- Document `ImageFace` handling [#223](https://github.com/bernhard-42/vscode-ocp-cad-viewer/issues/223)
+- **New status bar**
+    - Always-on hover preselection for CAD models: hovering a component (no active tool required) highlights it and shows a status line with its fixed attributes — geom type, mesh-estimated length/area/volume, and for circular edges (holes, fillets) the center and radius (`r ≈ …, c ≈ …`); edge start/end are the exact BRep vertices. Not enabled for GDS (dense, stacked layout data).
+
+- **Other Features**
+    - Hide-undo: cmd/meta-double-click on an object hides it, and now cmd/meta-double-click on empty space brings back the most recently hidden object (one per click, in reverse order). This restores hidden objects without the tree — handy in Studio mode, where the tree isn't shown.
+
+- **Performance**
+    - Initial load time on large models roughly halved (zebra-stripe initialization is deferred to first use, and the default clip-plane setup is batched into a single update instead of re-rendering once per setter).
+    - Clipping section caps now scale to large assemblies. The per-solid stencil and cap meshes are culled each frame to the on-screen, large-enough solids (sub-pixel solids are skipped and the total is bounded by a budget, largest-first), and are drawn only while the Clip tab is active.
+
+- **part_local, sketch_local, and line_Local support for build123d**
+    - build123d now also supports `part_local` and `line_local`. The viewer can show the local versions llike it did in the past with `sketch_local`. As a consequence `show_sketch_local` (now deprecated) is renamed to `show_locals`
+
+- **Fixes**
+    - **Breaking:** Shortcuts (keymap) weren't unique and consistent. Changed so that default action shortcuts:
+        - the lowercase keys drive the always-on topology filter (`a` = All, `v`/`e`/`f`, `s` = Solid)
+        - Copy-IDs (select tool) `S` → `I`,
+        - Studio `s` → `S`,
+        - Axes `a` → `A`
+        - Axes-at-origin `A` → `0`.
+        - Button and tab tooltips reflect the configured keymap.
+    - Rendering a new model now disables any active tool as the first step of `render()`; the incremental `addPart`/`updatePart`/`removePart` API keeps the tool.
+    - Clipping section caps no longer leave stray "ghost" caps floating in empty space for non-watertight solids or for planes parked open — a cap is drawn only for a plane that actually cuts the solid.
+    - Clip-plane sliders now use a finer, model-size-scaled step (e.g. 0.1 instead of 1 on a ~200-unit model), for more precise sectioning.
+    - Studio: hiding a component with ⌘/double-click no longer leaves "ghost" edges behind after switching back to CAD.
+    - The Clip and Studio tabs hide the measure and select tools (explode and z-scale remain available).
+    - Clip settings are resolved purely from the options passed to `render()` — each provided field wins and missing fields fall back to defaults.
 
 For the change history see [CHANGELOG](./CHANGELOG.md)
