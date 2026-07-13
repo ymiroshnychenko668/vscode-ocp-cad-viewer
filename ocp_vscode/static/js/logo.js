@@ -242,7 +242,7 @@ export const logo = () => {
             rotate_speed: 1,
             roughness: 0.65,
             show_parent: false,
-            show_sketch_local: true,
+            show_locals: true,
             ticks: 5,
             timeit: false,
             tools: true,
