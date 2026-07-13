@@ -176,16 +176,8 @@ def _extract_materials_from_node(node, extracted, id_to_key, name_counts):
         elif is_build123d_material(node.material):
             mat = node.material.pbr
             node.normalize_uvs = mat.normalize_uvs
-
-        elif is_pymat_material(node.material):
-            mat = PbrProperties.from_pymat(
-                node.material.vis.to_threejs(),
-                name=node.material.name,
-                id=node.material.vis.material_id,
-                source=node.material.vis.source,
-                normalize_uvs=True,
-                texture_scale=(1, 1),
-            )
+        else:
+            print(f"Unkonwn material {type(node.material)}")
 
         mat_dict = mat.to_dict()
         mat_content_key = mat.to_json(sort_keys=True)
