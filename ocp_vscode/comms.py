@@ -196,9 +196,9 @@ def _send(data, message_type, port=None, timeit=False):
                 return {
                     "collapse": Collapse.ROOT,
                     "_splash": False,
-                    "default_facecolor": (1, 234, 56),
-                    "default_thickedgecolor": (123, 45, 6),
-                    "default_vertexcolor": (123, 45, 6),
+                    "default_facecolor": (238, 130, 238),
+                    "default_thickedgecolor": (186, 85, 211),
+                    "default_vertexcolor": (186, 85, 211),
                 }
             except Exception as ex:
                 comms_warning(f"Unexpected error: {ex}\n{traceback.format_exc()}")
@@ -208,9 +208,9 @@ def _send(data, message_type, port=None, timeit=False):
                 return {
                     "collapse": Collapse.ROOT,
                     "_splash": False,
-                    "default_facecolor": (1, 234, 56),
-                    "default_thickedgecolor": (123, 45, 6),
-                    "default_vertexcolor": (123, 45, 6),
+                    "default_facecolor": (238, 130, 238),
+                    "default_thickedgecolor": (186, 85, 211),
+                    "default_vertexcolor": (186, 85, 211),
                 }
 
         return result
