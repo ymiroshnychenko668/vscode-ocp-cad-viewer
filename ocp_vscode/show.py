@@ -61,7 +61,7 @@ from ocp_tessellate.utils import Color, Timer, numpy_to_buffer_json
 from threejs_materials import PbrProperties
 
 from ocp_vscode.colors import BaseColorMap, get_colormap
-from ocp_vscode.utils import is_pymat_material, is_build123d_material
+from ocp_vscode.utils import is_build123d_material
 
 if os.environ.get("JUPYTER_CADQUERY") == "1":
     from jupyter_cadquery.comms import (  # pyright: ignore[reportMissingImports]  # ty:ignore[unresolved-import]
@@ -333,9 +333,7 @@ def _tessellate(
                 "default_color", changed_config.get("default_color")
             ),
             show_parent=kwargs.get("show_parent", changed_config.get("show_parent")),
-            show_sketch_local=kwargs.get(
-                "show_sketch_local", changed_config.get("show_sketch_local")
-            ),
+            show_locals=kwargs.get("show_locals", changed_config.get("show_locals")),
             progress=progress,
             debug=kwargs.get("debug", False),
         )
@@ -640,7 +638,8 @@ def show(
     render_mates=None,
     render_joints=None,
     show_parent=None,
-    show_sketch_local=None,
+    show_locals=None,
+    show_sketch_local=None,  # DEPRECATED
     helper_scale=None,
     mate_scale=None,  # DEPRECATED
     studio_environment=None,
@@ -783,7 +782,8 @@ def show(
         render_mates:            Render mates for MAssemblies (default=False)
         render_joints:           Render build123d joints (default=False)
         show_parent:             Render parent of faces, edges or vertices as wireframe (default=False)
-        show_sketch_local:       In build123d show local sketch in addition to relocate sketch (default=True)
+        show_locals:             In build123d show local part/sketch/line in addition to the relocated
+                                 object (default=True)
         helper_scale:            Scale of rendered helpers (locations, axis, mates for MAssemblies) (default=1)
                                  If it is a float < 1, used the max distance to nested bounding box times
                                  helper_scale to determine the absolut value of it
@@ -1011,7 +1011,8 @@ def show_object(
     render_mates=None,
     render_joints=None,
     show_parent=None,
-    show_sketch_local=None,
+    show_locals=None,
+    show_sketch_local=None,  # DEPRECATED
     helper_scale=None,
     mate_scale=None,  # DEPRECATED
     studio_environment=None,
@@ -1160,7 +1161,8 @@ def show_object(
         render_mates:            Render mates for MAssemblies (default=False)
         render_joints:           Render build123d joints (default=False)
         show_parent:             Render parent of faces, edges or vertices as wireframe (default=False)
-        show_sketch_local:       In build123d show local sketch in addition to relocate sketch (default=True)
+        show_locals:             In build123d show local part/sketch/line in addition to the relocated
+                                 object (default=True)
         helper_scale:            Scale of rendered helpers (locations, axis, mates for MAssemblies) (default=1)
                                  If it is a float < 1, used the max distance to nested bounding box times
                                  helper_scale to determine the absolut value of it
@@ -1400,7 +1402,8 @@ def show_objects(
     render_mates=None,
     render_joints=None,
     show_parent=None,
-    show_sketch_local=None,
+    show_locals=None,
+    show_sketch_local=None,  # DEPRECATED
     helper_scale=None,
     mate_scale=None,  # DEPRECATED
     studio_environment=None,
@@ -1532,7 +1535,8 @@ def show_objects(
         render_mates:            Render mates for MAssemblies (default=False)
         render_joints:           Render build123d joints (default=False)
         show_parent:             Render parent of faces, edges or vertices as wireframe (default=False)
-        show_sketch_local:       In build123d show local sketch in addition to relocate sketch (default=True)
+        show_locals:             In build123d show local part/sketch/line in addition to the relocated
+                                 object (default=True)
         helper_scale:            Scale of rendered helpers (locations, axis, mates for MAssemblies) (default=1)
                                  If it is a float < 1, used the max distance to nested bounding box times
                                  helper_scale to determine the absolut value of it

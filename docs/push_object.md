@@ -139,7 +139,8 @@ show_objects(<keyword arguments>)
         render_mates:            Render mates for MAssemblies (default=False)
         render_joints:           Render build123d joints (default=False)
         show_parent:             Render parent of faces, edges or vertices as wireframe (default=False)
-        show_sketch_local:       In build123d show local sketch in addition to relocate sketch (default=True)
+        show_locals:             In build123d show local part/sketch/line in addition to the relocated
+                                 object (default=True)
         helper_scale:            Scale of rendered helpers (locations, axis, mates for MAssemblies) (default=1)
 
     - Debug

@@ -244,7 +244,7 @@ CONFIG_CONTROL_KEYS = [
     "render_normals",
     "reset_camera",
     "show_parent",
-    "show_sketch_local",
+    "show_locals",
     "timeit",
 ]
 
@@ -298,7 +298,7 @@ DEFAULTS = {
     "render_joints": False,
     "helper_scale": 1.0,
     "show_parent": False,
-    "show_sketch_local": True,
+    "show_locals": True,
     "timeit": False,
     "collapse": Collapse.ROOT,
     "debug": False,
@@ -491,7 +491,8 @@ def set_defaults(
     render_mates=None,
     render_joints=None,
     show_parent=None,
-    show_sketch_local=None,
+    show_locals=None,
+    show_sketch_local=None,  # DEPRECATED
     helper_scale=None,
     mate_scale=None,  # DEPRECATED
     studio_environment=None,
@@ -614,7 +615,8 @@ def set_defaults(
         render_mates:       Render mates for MAssemblies (default=False)
         render_joints:      Render mates for MAssemblies (default=False)
         show_parent:        Render parent of faces, edges or vertices as wireframe (default=False)
-        show_sketch_local:  In build123d show local sketch in addition to relocate sketch (default=True)
+        show_locals:        In build123d show local part/sketch/line in addition to the relocated
+                            object (default=True)
         helper_scale:       Scale of rendered helpers (locations, axis, mates for MAssemblies) (default=1)
                             If it is a float < 1, used the max distance to nested bounding box times
                             helper_scale to determine the absolut value of it
@@ -699,9 +701,9 @@ def workspace_config(port=None, viewer=None):
     if is_pytest():
         return {
             "_splash": False,
-            "default_facecolor": (1, 234, 56),
-            "default_thickedgecolor": (123, 45, 6),
-            "default_vertexcolor": (123, 45, 6),
+            "default_facecolor": (238, 130, 238),
+            "default_thickedgecolor": (186, 85, 211),
+            "default_vertexcolor": (186, 85, 211),
         }
 
     if not is_jupyter_cadquery and port is None:
@@ -787,7 +789,7 @@ def reset_defaults(port=None):
         "render_joints": False,
         "helper_scale": 1.0,
         "show_parent": False,
-        "show_sketch_local": True,
+        "show_locals": True,
         "timeit": False,
         # "collapse": Collapse.ROOT,
         "debug": False,
@@ -855,5 +857,10 @@ def check_deprecated(kwargs, _length=1):
             "\n'control=\"orbit\" or \"trackball\"' is deprecated, use 'orbit_control=True' or 'False' instead\n"
         )
         kwargs["orbit_control"] = kwargs["control"] == "orbit"
+
+    if kwargs.get("show_sketch_local") is not None:
+        print("\n'show_sketch_local' is deprecated, use 'show_locals' instead\n")
+        kwargs["show_locals"] = kwargs["show_sketch_local"]
+        del kwargs["show_sketch_local"]
 
     return kwargs

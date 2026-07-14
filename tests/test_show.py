@@ -405,10 +405,17 @@ class SimpleShowTests(Tests):
 
         self.get(r)
         self.assertEqual(len(self.parts), 3)
-        self.assertEqual(len(self.instances), 1)
-        self.assertEqual(self.parts[0]["shape"].get("ref"), 0)
-        self.assertEqual(self.parts[1]["shape"].get("ref"), 0)
-        self.assertEqual(self.parts[2]["shape"].get("ref"), 0)
+        if hasattr(obj, "part_local"):
+            self.assertEqual(len(self.instances), 2)
+            self.assertEqual(self.parts[0]["parts"][0]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[0]["parts"][1]["shape"].get("ref"), 1)
+            self.assertEqual(self.parts[1]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[2]["shape"].get("ref"), 0)
+        else:
+            self.assertEqual(len(self.instances), 1)
+            self.assertEqual(self.parts[0]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[1]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[2]["shape"].get("ref"), 0)
 
     def test_show_part_solid(self):
         with BuildPart() as obj:
@@ -419,10 +426,16 @@ class SimpleShowTests(Tests):
 
         self.get(r)
         self.assertEqual(len(self.parts), 3)
-        self.assertEqual(len(self.instances), 1)
-        self.assertEqual(self.parts[0]["shape"].get("ref"), 0)
-        self.assertEqual(self.parts[1]["shape"].get("ref"), 0)
-        self.assertEqual(self.parts[2]["shape"].get("ref"), 0)
+        if hasattr(obj, "part_local"):
+            self.assertEqual(self.parts[0]["parts"][0]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[0]["parts"][1]["shape"].get("ref"), 1)
+            self.assertEqual(self.parts[1]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[2]["shape"].get("ref"), 0)
+        else:
+            self.assertEqual(len(self.instances), 1)
+            self.assertEqual(self.parts[0]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[1]["shape"].get("ref"), 0)
+            self.assertEqual(self.parts[2]["shape"].get("ref"), 0)
 
     def test_show_sketch(self):
         with BuildSketch() as obj:
