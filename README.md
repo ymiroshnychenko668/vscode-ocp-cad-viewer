@@ -242,5 +242,6 @@ Major release — the picking/selection architecture has been rewritten in [thre
     - Studio: hiding a component with ⌘/double-click no longer leaves "ghost" edges behind after switching back to CAD.
     - The Clip and Studio tabs hide the measure and select tools (explode and z-scale remain available).
     - Clip settings are resolved purely from the options passed to `render()` — each provided field wins and missing fields fall back to defaults.
+    - Fix color handling for builder objects to properly support `bp.part.color`, `bs.sketch.color`, and `bl.line.color`
 
 For the change history see [CHANGELOG](./CHANGELOG.md)
