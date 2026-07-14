@@ -7,7 +7,6 @@ set_defaults(
     reset_camera=Camera.KEEP, clip_planes=True, clip_object_colors=True, debug=True
 )
 
-# %%
 p2 = Box(1, 1, 1)
 
 show(
@@ -27,7 +26,12 @@ set_viewer_config(tab="clip")
 
 # %%
 
-show(Sphere(0.5))
+show(
+    Sphere(0.5),
+    clip_slider_0=0.2,
+    clip_slider_1=0.2,
+    clip_slider_2=0.2,
+)
 
 # %%
 
@@ -56,8 +60,17 @@ show(Box(1, 2, 3).faces().edges())
 # %%
 show(Box(1, 2, 3).faces())
 # %%
-with BuildPart() as p:
+with BuildPart(Pos(1, -1, 1)) as p:
     Box(0.1, 0.1, 2)
+
+assert p.part is not None
+p.part.color = "blue"
+
+with BuildPart(Pos(1, 1, 1)) as q:
+    Box(1, 2, 1)
+
+assert q.part is not None
+q.part.color = "red"
 
 a = {
     "a": Vector(1, 2, 3),
@@ -65,7 +78,6 @@ a = {
         Pos(2, 2, 2) * Cylinder(1, 1),
         (1, 2, 3),
         p,
-        p.part,
         {"c": Vector(5, 2, 3), "d": Pos(-3, 0, 0) * Box(1, 2, 3), "e": 123},
     ],
 }
@@ -75,8 +87,12 @@ b = [
     Pos(2, 4, 2) * Sphere(1),
     "wert",
     p,
-    p.part,
     {"x": Pos(-5, -5, 0) * Box(2, 1, 0.5), "y": 123},
 ]
+p2 = Pos(-2, 0, 1) * Box(1, 1, 1)
+
+p3 = Pos(0, -2, -1) * p.part
+p3.color = "green"
+
 show_all()
 # %%
