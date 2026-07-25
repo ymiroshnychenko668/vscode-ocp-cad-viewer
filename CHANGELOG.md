@@ -2,6 +2,11 @@
 
 All notable changes to the "OCP CAD Viewer" extension will be documented in this file.
 
+## 4.0.1
+
+- **Fixes**
+    - Fix trackball view-flip after prolonged rotation (holroyd mode).
+
 ## 4.0.0
 
 Major release — the picking/selection architecture has been rewritten in [three-cad-viewer](https://github.com/bernhard-42/three-cad-viewer), leading to chages for OCP CAD Viewer:

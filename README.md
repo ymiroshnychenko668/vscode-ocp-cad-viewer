@@ -37,7 +37,7 @@ show(cq.Workplane().box(1, 2, 3))
 
 ### Installation within VS Code
 
-1. Open the VS Code Marketplace, and search and install _OCP CAD Viewer 4.0.0_.
+1. Open the VS Code Marketplace, and search and install _OCP CAD Viewer 4.0.1_.
 
     Afterwards the OCP viewer is available in the VS Code sidebar:
 
@@ -199,6 +199,11 @@ make tests
 ```
 
 ## Changes
+
+## 4.0.1
+
+- **Fixes**
+    - Fix trackball view-flip after prolonged rotation (holroyd mode).
 
 ## 4.0.0
 
