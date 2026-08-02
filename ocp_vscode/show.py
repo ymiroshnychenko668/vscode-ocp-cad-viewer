@@ -1324,7 +1324,7 @@ def push_object(
         else:
             alpha = 1.0
 
-    if update:
+    if update and (name in OBJECTS["names"]):
         index = OBJECTS["names"].index(name)
         OBJECTS["objs"][index] = obj
         OBJECTS["colors"][index] = color
