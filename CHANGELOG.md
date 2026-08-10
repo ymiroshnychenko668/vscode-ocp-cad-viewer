@@ -2,6 +2,11 @@
 
 All notable changes to the "OCP CAD Viewer" extension will be documented in this file.
 
+## 4.0.2
+
+- **Fixes**
+    - Widen the `ocp-tessellate` requirement to `>=3.4.0,<3.6.0`. The previous ceiling of `<3.5.0` meant ocp_vscode could not be installed alongside anything requiring ocp-tessellate 3.5.0, and 3.5.0 is additive - it adds `default_facecolor`, `default_thickedgecolor` and `default_vertexcolor` while leaving the module constants ocp_vscode assigns to in place. No behaviour changes here.
+
 ## 4.0.1
 
 - **Fixes**
