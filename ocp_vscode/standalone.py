@@ -26,10 +26,12 @@ from pathlib import Path
 from flask import Flask, render_template, request, redirect
 from flask_sock import Sock
 from flask import cli
-from ocp_vscode.comms import MessageType
-from ocp_vscode.backend import ViewerBackend
-from ocp_vscode.backend_logo import logo
-from ocp_vscode.state import add_port, del_port
+from ocp_viewer_core.backend import ViewerBackend
+from ocp_viewer_core.comms import MessageType
+from ocp_viewer_core.logo import logo
+from ocp_viewer_core.state import add_port, del_port
+
+from ocp_vscode.comms import VSCodeComms, set_port
 from ocp_vscode.standalone_defaults import DEFAULTS
 import pyperclip
 
@@ -190,7 +192,14 @@ class Viewer:
         self.app = Flask(__name__)
         self.sock = Sock(self.app)
 
-        self.backend = ViewerBackend(self.port)
+        # The backend answers through a transport now. This host's is
+        # ocp_vscode's, which is what `ViewerBackend(port)` used to reach for
+        # implicitly by calling set_port in its constructor - the same two calls
+        # with the choice made here instead. When the standalone becomes
+        # ocp_viewer it will bring a Comms of its own, and this is the line that
+        # says so.
+        set_port(self.port)
+        self.backend = ViewerBackend(VSCodeComms())
 
         self.python_client = None
         self.javascript_client = None

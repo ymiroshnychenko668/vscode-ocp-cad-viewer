@@ -15,7 +15,7 @@ import pytest
 
 from ocp_vscode import set_port, workspace_config
 from ocp_vscode.comms import port_check
-from ocp_vscode.state import del_port
+from ocp_viewer_core.state import del_port
 
 
 # Use a port that is unlikely to clash with a running dev viewer.

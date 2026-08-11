@@ -1,11 +1,11 @@
-"""Tests for ocp_vscode.measure — validates calc_angle, get_properties, get_distance."""
+"""Tests for ocp_viewer_core.measure — validates calc_angle, get_properties, get_distance."""
 
 from math import cos, pi, sin, sqrt
 
 import pytest
 import build123d as bd
 
-from ocp_vscode.measure import (
+from ocp_viewer_core.measure import (
     calc_angle,
     calc_distance,
     get_distance,

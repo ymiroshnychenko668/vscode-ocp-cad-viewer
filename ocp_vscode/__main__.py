@@ -358,7 +358,9 @@ def main(ctx, **kwargs):
     """
 
     # Lazy-import the heavy modules so `--help` doesn't pull in Flask.
-    from ocp_vscode.backend import ViewerBackend
+    from ocp_viewer_core.backend import ViewerBackend
+
+    from ocp_vscode.comms import VSCodeComms, set_port
     from ocp_vscode.standalone import CONFIG_FILE, Viewer
 
     if kwargs.get("create_configfile"):
@@ -370,7 +372,11 @@ def main(ctx, **kwargs):
     elif kwargs.get("backend"):
         port = kwargs["port"]
 
-        backend = ViewerBackend(port)
+        # The backend takes a transport rather than a port: which viewer it
+        # answers, and how, is this host's to say. `set_port` is still what
+        # points the module-level socket at that viewer.
+        set_port(port)
+        backend = ViewerBackend(VSCodeComms())
         try:
             backend.start()
         except ConnectionRefusedError:

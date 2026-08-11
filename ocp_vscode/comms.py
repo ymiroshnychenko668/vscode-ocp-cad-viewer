@@ -34,10 +34,10 @@ from ocp_tessellate.ocp_utils import (
     serialize,
     loc_to_tq,
 )
-from ocp_viewer_core.comms import Comms
+from ocp_viewer_core.comms import Comms, MessageType
 from ocp_viewer_core.config import Collapse
 
-from .state import get_ports, update_state, get_config_file
+from ocp_viewer_core.state import get_ports, update_state, get_config_file
 from .utils import comms_warning
 
 from IPython import get_ipython
@@ -59,18 +59,6 @@ INIT_DONE = False
 #
 # Send data to the viewer
 #
-
-
-class MessageType(enum.IntEnum):
-    """Message types"""
-
-    DATA = 1
-    COMMAND = 2
-    UPDATES = 3
-    LISTEN = 4
-    BACKEND = 5
-    BACKEND_RESPONSE = 6
-    CONFIG = 7
 
 
 __all__ = [
@@ -412,3 +400,9 @@ class VSCodeComms(Comms[None]):
 
     def send_response(self, data, timeit=False) -> None:
         send_response(data, port=self.port, timeit=timeit)
+
+    def listen(self, callback) -> None:
+        # `listener` returns the loop rather than running it, which is what let
+        # a caller start it in a thread. The backend runs it here and blocks,
+        # which is what it did before.
+        listener(callback)()
