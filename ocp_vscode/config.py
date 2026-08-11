@@ -138,11 +138,15 @@ WORKSPACE_CONFIG_KEYS = (
     "zoom_speed",
 )
 
-# What this host cannot be told, because the webview decides it: the panel's
-# geometry is the panel's. Jupyter CadQuery, where a cell asks for a widget of a
-# given size, excludes neither.
-
-EXCLUDE_KEYS = ("cad_width", "height")
+# The keywords that belong to other hosts. The show signature is the superset of
+# every client's, so a key one host owns is a key another has to refuse - and
+# refusing it by name is what tells a user their `anchor=` went nowhere instead
+# of leaving them to wonder.
+#
+# `cad_width` and `height` are this surface's own to decide, where a notebook
+# cell is told them; `viewer`, `anchor` and `pinning` name a sidecar this host
+# does not have.
+EXCLUDE_KEYS = ("cad_width", "height", "viewer", "anchor", "pinning")
 
 # The client from comms.py, not a second one: `set_port()` points that
 # instance at a viewer, and a Session built on a different one would not hear
