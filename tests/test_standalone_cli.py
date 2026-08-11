@@ -43,16 +43,19 @@ def disable_pytest_stub():
 
 @pytest.fixture(autouse=True)
 def isolate_comms_port_state():
-    """`set_port()` mutates module-level globals in `ocp_vscode.comms`
-    (`CMD_PORT`, `CMD_URL`, `INIT_DONE`). Save and restore them around each
-    test so our standalone port (39777) doesn't leak into sibling test
-    modules — e.g. `tests/test_viewer_config.py` expects `OCP_PORT=3939`
-    discovery, which only fires when `INIT_DONE` is False."""
-    import ocp_vscode.comms as comms
+    """`set_port()` points this process's client at a viewer. Save and restore
+    what it points at, so our standalone port (39777) doesn't leak into sibling
+    test modules — `tests/test_viewer_config.py` expects OCP_PORT=3939
+    discovery, which only runs while the port is still unresolved.
 
-    saved = (comms.INIT_DONE, comms.CMD_PORT, comms.CMD_URL)
+    The three module globals this used to save - CMD_PORT, CMD_URL, INIT_DONE -
+    are the client's own state now, one per client rather than one per process.
+    """
+    from ocp_vscode.comms import comms
+
+    saved = (comms._port, comms.host, comms._resolved)
     yield
-    comms.INIT_DONE, comms.CMD_PORT, comms.CMD_URL = saved
+    comms._port, comms.host, comms._resolved = saved
 
 
 def _wait_for_config(port, proc, timeout=STARTUP_TIMEOUT):

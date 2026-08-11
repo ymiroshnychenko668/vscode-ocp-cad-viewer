@@ -1,4 +1,15 @@
-"""Communication with the viewer"""
+"""ocp_vscode's transport: the websocket client, pointed at a VS Code viewer.
+
+The client itself is `ocp_viewer_core.websocket` - the protocol, the framing,
+the port discovery and the listener are the same for any host that talks to a
+viewer over a websocket, and a second one needing them is what said they were
+never this package's.
+
+What is left here is what is genuinely VS Code's: the sentence printed when
+several viewers are open and the editor is about to raise an input box, and the
+module-level `set_port` / `get_port` / `find_and_set_port` that scripts and
+`docs/ports.md` have always had.
+"""
 
 #
 # Copyright 2025 Bernhard Walter
@@ -14,62 +25,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-import base64
-import enum
-import json
 import os
-import socket
-import traceback
-import questionary
 
-from websockets.sync.client import connect
-from websockets.exceptions import WebSocketException
-
-import orjson
-from ocp_tessellate.utils import Timer
-from ocp_tessellate.ocp_utils import (
-    is_topods_shape,
-    is_toploc_location,
-    serialize,
-    loc_to_tq,
+from ocp_viewer_core.comms import MessageType
+from ocp_viewer_core.websocket import (
+    DEFAULT_HOST,
+    WebSocketComms,
+    comms_warning,
+    default,
+    port_check,
 )
-from ocp_viewer_core.comms import Comms, MessageType
-from ocp_viewer_core.config import Collapse
-
-from ocp_viewer_core.state import get_ports, update_state, get_config_file
-from .utils import comms_warning
-
-from IPython import get_ipython
-
-# pylint: disable=unused-import
-try:
-    import jupyter_console  # noqa: F401
-
-    JCONSOLE = True
-except Exception:
-    JCONSOLE = False
-
-CMD_URL = "ws://127.0.0.1"
-CMD_PORT = 3939
-
-INIT_DONE = False
-
-
-#
-# Send data to the viewer
-#
-
 
 __all__ = [
+    "MessageType",
     "VSCodeComms",
-    "send_data",
+    "comms_warning",
+    "default",
+    "find_and_set_port",
+    "get_host",
+    "get_port",
+    "is_pytest",
+    "listener",
+    "port_check",
+    "send_backend",
     "send_command",
+    "send_config",
+    "send_data",
     "send_response",
     "set_port",
-    "get_port",
-    "listener",
-    "is_pytest",
 ]
 
 
@@ -77,332 +62,78 @@ def is_pytest():
     return os.environ.get("OCP_VSCODE_PYTEST") == "1"
 
 
-def port_check(port):
-    """Check whether the port is listening"""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1)
-    result = s.connect_ex((get_host(), port)) == 0
-    if result:
-        s.close()
-    return result
+class VSCodeComms(WebSocketComms):
+    """A viewer in a VS Code panel.
+
+    One method's worth of difference from the shared client: when more than one
+    viewer is listening and we are inside a Jupyter kernel, the editor raises an
+    input box above the cell, and the user has to be told to look at it.
+    """
+
+    def choose_port(self, ports):
+        if self._in_kernel():
+            print("\n=> Select port in VS Code input box above\n")
+        return super().choose_port(ports)
+
+    @staticmethod
+    def _in_kernel():
+        import sys  # noqa: PLC0415
+
+        ipython = sys.modules.get("IPython")
+        shell = ipython.get_ipython() if ipython is not None else None
+        return shell.__class__.__name__ == "ZMQInteractiveShell"
 
 
-def default(obj):
-    """Default JSON serializer."""
-    if is_topods_shape(obj):
-        return base64.b64encode(serialize(obj)).decode("utf-8")
-    elif is_toploc_location(obj):
-        return loc_to_tq(obj)
-    elif isinstance(obj, enum.Enum):
-        return obj.value
-    else:
-        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+# The one client this process talks to a viewer with. A module-level instance
+# rather than module-level state: `show` binds to it once, and the functions
+# below are the names scripts already use for it.
+comms = VSCodeComms()
+
+
+def set_port(port, host=DEFAULT_HOST):
+    """Skip discovery and pin to a viewer."""
+    comms.set_port(port, host)
 
 
 def get_port():
-    """Get the port"""
+    """The port in use, discovering one on first call."""
     if is_pytest():
         return 3939
-
-    if not INIT_DONE:
-        find_and_set_port()
-        set_connection_file()
-    return CMD_PORT
+    return comms.port
 
 
 def get_host():
-    """Get the host"""
-    return CMD_URL[5:]
-
-
-def set_port(port, host="127.0.0.1"):
-    """Set the port"""
-    global CMD_PORT, CMD_URL, INIT_DONE  # pylint: disable=global-statement
-    CMD_PORT = port
-    CMD_URL = f"ws://{host}"
-    INIT_DONE = True
-
-
-def _send(data, message_type, port=None, timeit=False):
-    """Send data to the viewer"""
-    global WS
-
-    if port is None:
-        if not INIT_DONE:
-            find_and_set_port()
-            set_connection_file()
-        port = CMD_PORT
-    try:
-        with Timer(timeit, "", "json dumps", 1):
-            j = orjson.dumps(data, default=default)  # pylint: disable=no-member
-            if message_type == MessageType.COMMAND:
-                j = b"C:" + j
-            elif message_type == MessageType.DATA:
-                j = b"D:" + j
-            elif message_type == MessageType.LISTEN:
-                j = b"L:" + j
-            elif message_type == MessageType.BACKEND:
-                j = b"B:" + j
-            elif message_type == MessageType.BACKEND_RESPONSE:
-                j = b"R:" + j
-            elif message_type == MessageType.CONFIG:
-                j = b"S:" + j
-
-        with Timer(timeit, "", f"websocket connect ({message_type.name})", 1):
-            try:
-                with connect(f"{CMD_URL}:{port}", close_timeout=0.05) as ws:
-                    ws.send(j)
-
-                    with Timer(
-                        timeit, "", f"websocket send {len(j) / 1024 / 1024:.3f} MB", 1
-                    ):
-                        result = None
-                        no_response_commands = ("screenshot", "set_relative_time")
-                        if message_type == MessageType.COMMAND and not (
-                            isinstance(data, dict)
-                            and data.get("type") in no_response_commands
-                        ):
-                            try:
-                                result = json.loads(ws.recv())
-                            except Exception as ex:  # pylint: disable=broad-except
-                                print(ex)
-                        elif message_type == MessageType.COMMAND and (
-                            isinstance(data, dict)
-                            and data.get("type") in no_response_commands
-                        ):
-                            result = {}
-                        elif message_type == MessageType.BACKEND:
-                            ack = json.loads(ws.recv())
-                            if not ack.get("ok"):
-                                print(
-                                    "Warning: OCP CAD Viewer backend is not connected "
-                                    "— measurements/properties unavailable",
-                                    flush=True,
-                                )
-
-            except (ConnectionRefusedError, OSError, WebSocketException) as ex:
-                comms_warning(f"Connection error: {ex}\nMessage: {data}")
-                # set some dummy values to avoid errors
-                return {
-                    "collapse": Collapse.ROOT,
-                    "_splash": False,
-                    "default_facecolor": (238, 130, 238),
-                    "default_thickedgecolor": (186, 85, 211),
-                    "default_vertexcolor": (186, 85, 211),
-                }
-            except Exception as ex:
-                comms_warning(f"Unexpected error: {ex}\n{traceback.format_exc()}")
-                # set some dummy values to avoid errors
-                return {
-                    "collapse": Collapse.ROOT,
-                    "_splash": False,
-                    "default_facecolor": (238, 130, 238),
-                    "default_thickedgecolor": (186, 85, 211),
-                    "default_vertexcolor": (186, 85, 211),
-                }
-
-        return result
-
-    except Exception as ex:  # pylint: disable=broad-except
-        print(
-            f"Cannot connect to viewer on port {port}, is it running and the right port provided?"
-        )
-        print(ex)
-        return None
-
-
-def send_data(data, port=None, timeit=False):
-    """Send data to the viewer"""
-    return _send(data, MessageType.DATA, port, timeit)
-
-
-def send_config(config, port=None, title=None, timeit=False):
-    """Send config to the viewer"""
-    return _send(config, MessageType.CONFIG, port, timeit)
-
-
-def send_command(data, port=None, title=None, timeit=False):
-    """Send command to the viewer"""
-    result = _send(data, MessageType.COMMAND, port, timeit)
-    if result.get("command") == "status":
-        return result["text"]
-    else:
-        return result
-
-
-def send_backend(data, port=None, timeit=False):
-    """Send data to the viewer"""
-    return _send(data, MessageType.BACKEND, port, timeit)
-
-
-def send_response(data, port=None, timeit=False):
-    """Send data to the viewer"""
-    return _send(data, MessageType.BACKEND_RESPONSE, port, timeit)
-
-
-#
-# Receive data from the viewer
-#
-
-
-# async listener for the websocket class
-# this will be called when the viewer sends data
-# the data is then passed to the callback function
-#
-def listener(callback):
-    """Listen for data from the viewer"""
-
-    def _listen():
-        last_config = {}
-        with connect(f"{CMD_URL}:{CMD_PORT}", max_size=2**28) as websocket:
-            websocket.send(b"L:Python listener")
-            while True:
-                try:
-                    message = websocket.recv()
-                    if message is None:
-                        continue
-
-                    message = json.loads(message)
-                    if "model" in message.keys():
-                        callback(message["model"], MessageType.DATA)
-
-                    if message.get("command") == "status":
-                        changes = message["text"]
-                        new_changes = {}
-                        for k, v in changes.items():
-                            if k in last_config and last_config[k] == v:
-                                continue
-                            new_changes[k] = v
-                        last_config = changes
-                        callback(new_changes, MessageType.UPDATES)
-
-                    elif message.get("command") == "stop":
-                        print("Stopping Python listener")
-                        break
-                except Exception as ex:  # pylint: disable=broad-except
-                    print(ex)
-                    break
-
-    return _listen
+    return comms.host
 
 
 def find_and_set_port():
-    """Set the port and connection file"""
-
-    def find_port():
-        port = None
-        ports = get_ports()
-
-        valid_ports = []
-        for p in ports:
-            if port_check(int(p)):
-                valid_ports.append(p)
-
-        if len(valid_ports) == 0:
-            return None
-
-        elif len(valid_ports) == 1:
-            port = valid_ports[0]
-
-        else:
-            if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
-                print("\n=> Select port in VS Code input box above\n")
-                port = input(f"Select port from {[int(p) for p in valid_ports]} ")
-            else:
-                port = questionary.select(
-                    "Multiple viewers found. Select a port:",
-                    choices=[str(p) for p in valid_ports],
-                ).ask()
-            if port is not None and port != "":
-                port = int(port)
-
-        return port
-
-    try:
-        port = int(os.environ.get("OCP_PORT", "0"))
-    except ValueError:
-        print(
-            f"Port {os.environ.get('OCP_PORT')} taken from environment variable OCP_PORT is invalid"
-        )
-        port = 0
-
-    if port > 0:
-        print(f"Using predefined port {port} taken from environment variable OCP_PORT")
-    else:
-        port = find_port()
-        if port is not None:
-            print(f"Using port {port}")
-        elif port_check(3939):
-            port = 3939
-            print(f"Default port {port} is open, using it")
-
-    set_port(port)
+    """Re-run discovery, after opening or closing a viewer."""
+    comms.find_and_set_port()
 
 
-def set_connection_file():
-    """Set the connection file for Jupyter in the state file .ocpvscode"""
-    if JCONSOLE and hasattr(get_ipython(), "kernel"):
-        kernel = get_ipython().kernel
-        cf = kernel.config["IPKernelApp"]["connection_file"]
-        with open(cf, "r", encoding="utf-8") as f:
-            connection_info = json.load(f)
-
-        if port_check(connection_info["iopub_port"]):
-            print("Jupyter kernel running")
-            try:
-                _ = int(CMD_PORT)
-                update_state(str(CMD_PORT), cf)
-                print(f"Jupyter connection file path written to {get_config_file()}")
-            except ValueError:
-                print(
-                    f"Cannot set Jupyter connection file, port {CMD_PORT}' is non-numeric"
-                )
-        else:
-            print("Jupyter kernel not responding")
+def send_data(data, port=None, timeit=False):
+    return comms._send(data, MessageType.DATA, port, timeit)
 
 
-class VSCodeComms(Comms[None]):
-    """ocp_vscode's transport, as the core asks for it.
+def send_config(config, port=None, title=None, timeit=False):
+    return comms._send(config, MessageType.CONFIG, port, timeit)
 
-    A thin pass to the functions above rather than to `_send` underneath them,
-    so every behaviour they carry comes with it: `send_command` unwrapping a
-    status reply, the dummy config a refused connection answers with, the
-    warning when the measurement backend is not listening.
 
-    `port` is read out of the keywords of the call in flight rather than taken
-    at construction, because one Viewer serves every viewer this process talks
-    to - `show(obj, port=3939)` and `show(obj, port=3940)` are one bound `show`
-    - and because `port=None` is what keeps discovery lazy. Resolving a port
-    here would run `find_and_set_port()` at `import ocp_vscode`, which prompts
-    when more than one viewer is live.
+def send_command(data, port=None, title=None, timeit=False):
+    result = comms._send(data, MessageType.COMMAND, port, timeit)
+    if isinstance(result, dict) and result.get("command") == "status":
+        return result["text"]
+    return result
 
-    No handle: the webview has nothing to hand back, so `send_data` returns None
-    and `is_handle` keeps its inherited False.
-    """
 
-    @property
-    def port(self):
-        """The port this call is addressed to, or None to let discovery decide."""
-        return self.keywords.get("port")
+def send_backend(data, port=None, timeit=False):
+    return comms._send(data, MessageType.BACKEND, port, timeit)
 
-    def send_data(self, data, timeit=False) -> None:
-        send_data(data, port=self.port, timeit=timeit)
-        return None
 
-    def send_config(self, config, timeit=False) -> None:
-        send_config(config, port=self.port, timeit=timeit)
+def send_response(data, port=None, timeit=False):
+    return comms._send(data, MessageType.BACKEND_RESPONSE, port, timeit)
 
-    def send_command(self, data, timeit=False):
-        return send_command(data, port=self.port, timeit=timeit)
 
-    def send_backend(self, data, timeit=False) -> None:
-        send_backend(data, port=self.port, timeit=timeit)
-
-    def send_response(self, data, timeit=False) -> None:
-        send_response(data, port=self.port, timeit=timeit)
-
-    def listen(self, callback) -> None:
-        # `listener` returns the loop rather than running it, which is what let
-        # a caller start it in a thread. The backend runs it here and blocks,
-        # which is what it did before.
-        listener(callback)()
+def listener(callback):
+    """The receiving loop, returned rather than run - a caller may want a thread."""
+    return comms.listener(callback)

@@ -42,7 +42,7 @@ from ocp_viewer_core.config import (
     UiTab,
 )
 
-from ocp_vscode.comms import VSCodeComms
+from ocp_vscode.comms import comms
 
 __all__ = [
     "workspace_config",
@@ -148,7 +148,9 @@ WORKSPACE_CONFIG_KEYS = (
 
 EXCLUDE_KEYS = ("cad_width", "height")
 
-comms = VSCodeComms()
+# The client from comms.py, not a second one: `set_port()` points that
+# instance at a viewer, and a Session built on a different one would not hear
+# about it.
 session = Session(comms)
 config = Config(session, WORKSPACE_CONFIG_KEYS, EXCLUDE_KEYS)
 
