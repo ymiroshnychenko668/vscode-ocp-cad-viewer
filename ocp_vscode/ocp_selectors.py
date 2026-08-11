@@ -1,3 +1,5 @@
+"""Selector helpers for naming faces, edges and vertices in the viewer."""
+
 #
 # Copyright 2025 Bernhard Walter
 #

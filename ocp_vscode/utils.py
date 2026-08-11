@@ -34,9 +34,9 @@ _COMMS_WARNING_SHOWN = False
 
 
 def _warning_on_one_line(message, category, filename, lineno, line=None):
-    # `formatwarning` takes (message, category, filename, lineno, line). The
-    # `file` parameter this used to carry belongs to `showwarning`, and while it
-    # sat here `line` bound to it on every call. Same fix as in the core.
+    # `formatwarning` takes (message, category, filename, lineno, line). A
+    # `file` parameter here would belong to `showwarning` instead, and would
+    # capture what the caller meant as `line`.
     return "%s: %s\n" % (category.__name__, message)
 
 

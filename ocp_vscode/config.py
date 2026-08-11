@@ -67,16 +67,12 @@ __all__ = [
 
 # The keys of the viewer's own state that survive into a show's config.
 #
-# This is the golden master's CONFIG_UI_KEYS + CONFIG_WORKSPACE_KEYS, with the
-# four keys those two lists carried twice removed by the set. It is deliberately
-# not the 27-key "workspace settings" list in ocp-viewer-core's README: that
-# answers "which keys does this client store in its settings", and this list
-# answers "which keys of the viewer's status are merged into the next show".
-# Measured before choosing - the shorter list drops 34 keys, among them every
-# toolbar toggle, all of clip, zebra and studio, tab, explode and analysis_tool,
-# so a second show() would quietly reset the user's toolbar to workspace
-# defaults. Config.workspace_filter uses this list for the merge, so the merge
-# is what it has to be right for.
+# `Config.workspace_filter` uses this list to decide which of the viewer's
+# reported state survives into the next show, so it has to name every key the
+# user can change from the toolbar - the toggles, clip, zebra and studio, the
+# active tab, explode and the analysis tool. A shorter list, such as one naming
+# only the keys this client stores in its settings, would let a second show()
+# reset the user's toolbar to the workspace defaults.
 
 WORKSPACE_CONFIG_KEYS = (
     "ambient_intensity",

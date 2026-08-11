@@ -1,12 +1,11 @@
 """`python -m ocp_vscode --backend`: the measurement backend for a VS Code viewer.
 
-This used to be two programs sharing an entry point - the standalone viewer,
-and the backend the extension launches for it. The standalone is `ocp_viewer`
-now, and what is left is the one the extension calls: `controller.ts` spawns
-this with the port of the viewer it just opened.
+`controller.ts` spawns this with the port of the viewer it has just opened.
+The backend itself is `ocp_viewer_core.backend`, shared with every host; what
+this module supplies is the transport, which is the only part that is ours.
 
-The backend itself is `ocp_viewer_core.backend`, shared with every host. What
-this supplies is the transport, which is the only part that is ours.
+Run with no arguments it points at `ocp_viewer`, which is the standalone
+viewer - that used to be started from here.
 """
 
 #

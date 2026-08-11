@@ -15,10 +15,9 @@ chosen. A bound method hovers with the full signature, `self` gone.
 `inspect.currentframe().f_back` to find the variables to draw. Wrapped, that
 frame would be the wrapper's.
 
-The `JUPYTER_CADQUERY` branch that used to sit at the top of this module - three
-transport functions imported from one package or the other depending on an
-environment variable - is gone. Which transport a show uses is now the `Comms`
-the host built its `Config` on.
+Which transport a show uses is the `Comms` this host built its `Config` on,
+decided once at construction rather than by an environment variable read at
+import time.
 """
 
 #
@@ -79,9 +78,7 @@ _show = viewer._show
 _show_object = viewer._show_object
 
 # The colormap in force belongs to the Viewer, along with the object stack and
-# the last bounding box. colors.py used to hold it in a module global, which was
-# one of the pieces of state that made two viewers in one process overwrite each
-# other's.
+# the last bounding box, so that two viewers in one process keep their own.
 get_colormap = viewer.get_colormap
 set_colormap = viewer.set_colormap
 unset_colormap = viewer.unset_colormap
