@@ -787,10 +787,11 @@
     "@vscode/python-extension": "^1.0.6",
     "adm-zip": "^0.5.16",
     "follow-redirects": "^1.15.11",
+    "ocp-viewer-core": "./ocp-viewer-core-v0.1.0.tgz",
     "proper-lockfile": "./proper-lockfile-4.1.2-esm.tgz",
     "semver": "^7.5.1",
     "signal-exit": "3",
-    "three-cad-viewer": "5.0.2",
+    "three-cad-viewer": "../three-cad-viewer/three-cad-viewer-v5.0.3.tgz",
     "ws": "^8.13.0"
   },
   "resolutions": {

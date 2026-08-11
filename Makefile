@@ -1,6 +1,6 @@
 .PHONY: clean_notebooks wheel install tests check_version dist check_dist upload_test upload \
-		bump release create-release docker docker_upload dist tests reload reload-tcv prepare \
-		native_tests
+		bump release create-release docker docker_upload dist tests reload reload-tcv \
+		reload-core prepare native_tests
 
 PYCACHE := $(shell find . -name '__pycache__')
 EGGS := $(wildcard *.egg-info)
@@ -35,6 +35,8 @@ dist: clean
 	@cp resources/viewer.html ocp_vscode/templates
 	@cp node_modules/three-cad-viewer/dist/three-cad-viewer.esm.js ocp_vscode/static/js
 	@cp node_modules/three-cad-viewer/dist/three-cad-viewer.css ocp_vscode/static/css
+	@mkdir -p ocp_vscode/static/js/ocp-viewer-core
+	@cp node_modules/ocp-viewer-core/src/*.js ocp_vscode/static/js/ocp-viewer-core/
 	@cp src/logo.ts ocp_vscode/static/js/logo.js
 	@mkdir -p ocp_vscode/static/icon
 	@cp resources/ocp-eye.png ocp_vscode/static/icon/ocp-eye.png
@@ -70,10 +72,19 @@ create-release:
 		--notes "v$(CURRENT_VERSION)" \
 		--target main
 
+# The two tarball dependencies. `yarn cache clean` is not optional: yarn caches a
+# file dependency by name and version, so a rebuilt tarball whose version has not
+# moved installs the stale copy from the cache instead.
+
 reload-tcv:
 	yarn remove three-cad-viewer
 	yarn cache clean
 	yarn add ./$(shell ls three-cad-viewer-v*.tgz | sort -V | tail -n 1)
+
+reload-core:
+	yarn remove ocp-viewer-core
+	yarn cache clean
+	yarn add ./$(shell ls ocp-viewer-core-v*.tgz | sort -V | tail -n 1)
 
 reload: reload-tcv install-vsix
 	@echo done
