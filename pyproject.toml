@@ -26,6 +26,10 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
+# flask, flask_sock, click, pyperclip and pyaml left with the standalone: they
+# were the server's, and the server is `ocp_viewer` now. questionary stays
+# because the shared websocket client asks it which viewer to use when several
+# are open.
 dependencies = [
     "ocp-tessellate>=3.4.0,<3.6.0",
     "ocp-viewer-core>=0.1.0,<0.2.0",
@@ -33,11 +37,6 @@ dependencies = [
     "ipykernel",
     "orjson",
     "websockets>=16.0,<17.0",
-    "pyaml",
-    "flask>=3.0,<4.0",
-    "flask_sock>=0.7,<1.0",
-    "click>=8.1,<9.0",
-    "pyperclip==1.9.0",
     "questionary==2.1.1",
     "pillow>=12.1.0, <13.0",
     "threejs-materials>=1.2.0,<1.3.0",
@@ -53,13 +52,10 @@ packages = ["ocp_vscode"]
 package-dir = { "" = "." }
 include-package-data = false
 
-[tool.setuptools.package-data]
-ocp_vscode = [
-    "templates/*.html",
-    "static/css/*.css",
-    "static/js/*.js",
-    "static/icon/*.png",
-]
+# No package data: the templates and static files here were the standalone's
+# page and the JavaScript it served, and both left with it. The extension reads
+# its own page out of resources/ and its JavaScript out of node_modules, so the
+# wheel carries Python and nothing else.
 
 [project.optional-dependencies]
 dev = ["questionary~=1.10.0", "bump-my-version", "ruff", "twine"]

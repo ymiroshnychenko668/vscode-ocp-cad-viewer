@@ -31,14 +31,9 @@ endif
 
 dist: clean
 	@echo Version: $(CURRENT_VERSION)
-	@echo "Copying html, css and js file to standalone locations"
-	@cp resources/viewer-standalone.html ocp_vscode/templates/viewer.html
-	@cp node_modules/three-cad-viewer/dist/three-cad-viewer.esm.js ocp_vscode/static/js
-	@cp node_modules/three-cad-viewer/dist/three-cad-viewer.css ocp_vscode/static/css
-	@mkdir -p ocp_vscode/static/js/ocp-viewer-core
-	@cp node_modules/ocp-viewer-core/src/*.js ocp_vscode/static/js/ocp-viewer-core/
-	@mkdir -p ocp_vscode/static/icon
-	@cp resources/ocp-eye.png ocp_vscode/static/icon/ocp-eye.png
+	# Nothing to copy: the page is read from resources/ by the extension and
+	# the JavaScript from node_modules, both at runtime. The copies that used
+	# to be made here were for the standalone, which is `ocp_viewer` now.
 
 	@python -m build -n
 	vsce package --yarn
