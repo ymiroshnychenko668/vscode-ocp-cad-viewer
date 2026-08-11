@@ -161,37 +161,38 @@ check_deprecated = config.check_deprecated
 validate_tool_args = config.validate_tool_args
 
 
-# The small entry points keep the host keywords they have always taken, and open
-# the scope so the transport can act on them. `viewer` is Jupyter CadQuery's and
-# has always been accepted and ignored here - which is the superset rule the
-# show family follows, in the shape it already had.
+# The small entry points keep the host keyword they have always taken, and open
+# the scope so the transport can act on it. Only `port`: `viewer` names Jupyter
+# CadQuery's sidecar and was accepted here and passed to a transport that
+# ignores it. The superset belongs to the show family, which is one signature
+# serving four hosts; these functions are this host's own.
 #
 # These wrap rather than nest: the core's own calls between these methods
 # (`combined_config` asks itself for `status` and `workspace_config`) go
 # straight to the methods, never back through here, so no scope is opened twice.
 
 
-def status(port=None, viewer=None, debug=False):
+def status(port=None, debug=False):
     """Get viewer status"""
-    session.begin({"port": port, "viewer": viewer})
+    session.begin({"port": port})
     try:
         return config.status(debug=debug)
     finally:
         session.clear()
 
 
-def workspace_config(port=None, viewer=None):
+def workspace_config(port=None):
     """Get viewer workspace config"""
-    session.begin({"port": port, "viewer": viewer})
+    session.begin({"port": port})
     try:
         return config.workspace_config()
     finally:
         session.clear()
 
 
-def combined_config(port=None, viewer=None):
+def combined_config(port=None):
     """Get combined config from workspace and status"""
-    session.begin({"port": port, "viewer": viewer})
+    session.begin({"port": port})
     try:
         return config.combined_config()
     finally:
