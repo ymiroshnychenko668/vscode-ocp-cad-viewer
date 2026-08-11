@@ -1,4 +1,16 @@
-"""Configuration of the viewer"""
+"""Configuration of the viewer.
+
+The semantics live in `ocp_viewer_core.config`. What is ocp_vscode's, and stays
+here, is the two lists that tell the core what this host can do, the transport
+it is built on, and the names bound off the instance so that
+`from ocp_vscode import show, status, set_defaults` keeps working.
+
+The `JUPYTER_CADQUERY` import branch this module opened with is gone. It decided
+at import time, from an environment variable, which transport the config
+functions would use - so `from ocp_vscode import config` behaved differently
+depending on a variable set somewhere else. A host supplying its own `Comms` is
+that decision made in one place, by the host, at construction.
+"""
 
 #
 # Copyright 2025 Bernhard Walter
@@ -16,25 +28,21 @@
 # limitations under the License.
 #
 
-import os
-import warnings
+from ocp_viewer_core.comms import Session
+from ocp_viewer_core.config import (
+    AnalysisTool,
+    Camera,
+    Collapse,
+    Config,
+    Render,
+    StudioBackground,
+    StudioEnvironment,
+    StudioTextureMapping,
+    StudioToneMapping,
+    UiTab,
+)
 
-if os.environ.get("JUPYTER_CADQUERY") is None:
-    from ocp_vscode.comms import send_command, send_config, get_port, is_pytest
-
-    is_jupyter_cadquery = False
-else:
-    from jupyter_cadquery.comms import send_config, send_command  # type: ignore
-
-    def is_pytest():
-        return False
-
-    is_jupyter_cadquery = True
-
-from ocp_tessellate.utils import Color
-
-from enum import Enum
-
+from ocp_vscode.comms import VSCodeComms
 
 __all__ = [
     "workspace_config",
@@ -57,116 +65,27 @@ __all__ = [
     "check_deprecated",
 ]
 
+# The keys of the viewer's own state that survive into a show's config.
+#
+# This is the golden master's CONFIG_UI_KEYS + CONFIG_WORKSPACE_KEYS, with the
+# four keys those two lists carried twice removed by the set. It is deliberately
+# not the 27-key "workspace settings" list in ocp-viewer-core's README: that
+# answers "which keys does this client store in its settings", and this list
+# answers "which keys of the viewer's status are merged into the next show".
+# Measured before choosing - the shorter list drops 34 keys, among them every
+# toolbar toggle, all of clip, zebra and studio, tab, explode and analysis_tool,
+# so a second show() would quietly reset the user's toolbar to workspace
+# defaults. Config.workspace_filter uses this list for the merge, so the merge
+# is what it has to be right for.
 
-class Camera(Enum):
-    """Camera reset modes"""
-
-    RESET = "reset"
-    CENTER = "center"
-    KEEP = "keep"
-    ISO = "iso"
-    TOP = "top"
-    BOTTOM = "bottom"
-    LEFT = "left"
-    RIGHT = "right"
-    BACK = "rear"  #  intentionally
-    FRONT = "front"
-
-
-class Collapse(Enum):
-    """Collapse modes for the CAD navigation tree"""
-
-    NONE = 2
-    LEAVES = -1
-    ALL = 0
-    ROOT = 1
-
-
-class Render(Enum):
-    """Per-object render modes"""
-
-    ALL = "all"
-    EDGES = "edges"
-    FACES = "faces"
-    NONE = "none"
-
-
-class StudioEnvironment(Enum):
-    """Studio mode environment/HDR map presets"""
-
-    PROCEDURAL_STUDIO = "studio"
-    SOFT_LIGHT = "studio_small_08"
-    HIGH_CONTRAST_STUDIO = "studio_small_03"
-    BRIGHT_NEUTRAL = "white_studio_05"
-    CLEAN_SOFTBOX = "white_studio_03"
-    SPOTLIT_SETUP = "photo_studio_01"
-    CONTROLLED_LIGHT = "studio_small_09"
-    HARD_CONTRAST_LIGHT = "cyclorama_hard_light"
-    URBAN_OVERCAST = "canary_wharf"
-    OUTDOOR_WARM = "kiara_1_dawn"
-    NEUTRAL_INDUSTRIAL = "empty_warehouse_01"
-    SAN_GIUSEPPE_BRIDGE = "san_giuseppe_bridge"
-
-
-class StudioBackground(Enum):
-    """Studio mode background options"""
-
-    ENVIRONMENT = "environment"
-    TRANSPARENT = "transparent"
-    GRADIENT = "gradient"
-    GRADIENT_DARK = "gradient-dark"
-    WHITE = "white"
-    GREY = "grey"
-    DARKGREY = "darkgrey"
-
-
-class StudioToneMapping(Enum):
-    """Studio mode tone mapping options"""
-
-    NEUTRAL = "neutral"
-    ACES = "ACES"
-    NONE = "none"
-
-
-class StudioTextureMapping(Enum):
-    """Studio mode texture mapping options"""
-
-    TRIPLANAR = "triplanar"
-    PARAMETRIC = "parametric"
-
-
-class AnalysisTool(Enum):
-    """Analysis tools for the CAD viewer (mutually exclusive with explode)."""
-
-    PROPERTIES = "properties"
-    DISTANCE = "distance"
-    SELECT = "select"
-    OFF = "off"
-
-
-class UiTab(Enum):
-    """UI tabs in the CAD viewer side panel."""
-
-    TREE = "tree"
-    CLIP = "clip"
-    ZEBRA = "zebra"
-    MATERIAL = "material"
-    STUDIO = "studio"
-
-
-COLLAPSE_REVERSE_MAPPING = {
-    2: Collapse.NONE,
-    -1: Collapse.LEAVES,
-    0: Collapse.ALL,
-    1: Collapse.ROOT,
-}
-
-CONFIG_UI_KEYS = [
+WORKSPACE_CONFIG_KEYS = (
     "ambient_intensity",
     "analysis_tool",
+    "angular_tolerance",
     "axes",
     "axes0",
     "black_edges",
+    "center_grid",
     "clip_intersection",
     "clip_normal_0",
     "clip_normal_1",
@@ -176,52 +95,8 @@ CONFIG_UI_KEYS = [
     "clip_slider_0",
     "clip_slider_1",
     "clip_slider_2",
-    "direct_intensity",
-    "explode",
-    "grid",
-    "metalness",
-    "ortho",
-    "roughness",
-    "studio_4k_env_maps",
-    "studio_ao_intensity",
-    "studio_background",
-    "studio_env_intensity",
-    "studio_env_rotation",
-    "studio_environment",
-    "studio_exposure",
-    "studio_shadow_intensity",
-    "studio_shadow_softness",
-    "studio_texture_mapping",
-    "studio_tone_mapping",
-    "tab",
-    "transparent",
-    "zebra_color_scheme",
-    "zebra_count",
-    "zebra_direction",
-    "zebra_mapping_mode",
-    "zebra_opacity",
-]
-
-CONFIG_WORKSPACE_KEYS = CONFIG_UI_KEYS + [
-    # viewer
-    "center_grid",
     "collapse",
     "dark",
-    "glass",
-    "grid_font_size",
-    "orbit_control",
-    "states",
-    "ticks",
-    "tools",
-    "tree_width",
-    "up",
-    # mouse
-    "pan_speed",
-    "rotate_speed",
-    "zoom_speed",
-    # render settings
-    "ambient_intensity",
-    "angular_tolerance",
     "default_color",
     "default_edgecolor",
     "default_facecolor",
@@ -230,48 +105,18 @@ CONFIG_WORKSPACE_KEYS = CONFIG_UI_KEYS + [
     "default_vertexcolor",
     "deviation",
     "direct_intensity",
-    "metalness",
-    "modifier_keys",
-    "roughness",
-]
-
-CONFIG_CONTROL_KEYS = [
-    "debug",
-    "edge_accuracy",
-    "helper_scale",
-    "render_joints",
-    "render_mates",
-    "render_normals",
-    "reset_camera",
-    "show_parent",
-    "show_locals",
-    "timeit",
-]
-
-CONFIG_KEYS = CONFIG_WORKSPACE_KEYS + CONFIG_CONTROL_KEYS + ["zoom"]
-
-CONFIG_SET_KEYS = [
-    "ambient_intensity",
-    "analysis_tool",
-    "axes",
-    "axes0",
-    "black_edges",
-    "center_grid",
-    "collapse",
-    "default_edgecolor",
-    "default_opacity",
-    "direct_intensity",
     "explode",
     "glass",
     "grid",
+    "grid_font_size",
     "metalness",
+    "modifier_keys",
+    "orbit_control",
     "ortho",
     "pan_speed",
-    "position",
-    "quaternion",
-    "reset_camera",
     "rotate_speed",
     "roughness",
+    "states",
     "studio_4k_env_maps",
     "studio_ao_intensity",
     "studio_background",
@@ -284,583 +129,115 @@ CONFIG_SET_KEYS = [
     "studio_texture_mapping",
     "studio_tone_mapping",
     "tab",
-    "target",
+    "ticks",
     "tools",
     "transparent",
     "tree_width",
+    "up",
+    "zebra_color_scheme",
+    "zebra_count",
+    "zebra_direction",
+    "zebra_mapping_mode",
+    "zebra_opacity",
     "zoom_speed",
-    "zoom",
-]
+)
 
-DEFAULTS = {
-    "render_normals": False,
-    "render_mates": False,
-    "render_joints": False,
-    "helper_scale": 1.0,
-    "show_parent": False,
-    "show_locals": True,
-    "timeit": False,
-    "collapse": Collapse.ROOT,
-    "debug": False,
-}
+# What this host cannot be told, because the webview decides it: the panel's
+# geometry is the panel's. Jupyter CadQuery, where a cell asks for a widget of a
+# given size, excludes neither.
 
+EXCLUDE_KEYS = ("cad_width", "height")
 
-def validate_tool_args(explode, analysis_tool):
-    """Shared validation for ``explode`` / ``analysis_tool`` — used by both
-    ``set_viewer_config`` and ``show``. Accepts either ``AnalysisTool`` enum
-    members or their string values. Raises ``ValueError`` on invalid input
-    or on the mutually-exclusive combination."""
-    if isinstance(analysis_tool, AnalysisTool):
-        analysis_tool = analysis_tool.value
-    if analysis_tool is not None and analysis_tool not in (
-        "properties",
-        "distance",
-        "select",
-        "off",
-    ):
-        raise ValueError(
-            f"analysis_tool must be an AnalysisTool member or one of "
-            f'"properties", "distance", "select", "off"; got {analysis_tool!r}'
-        )
-    if explode is True and analysis_tool in ("properties", "distance", "select"):
-        raise ValueError(
-            "explode=True and analysis_tool=... are mutually exclusive — "
-            "the viewer disables one when the other activates. "
-            "Pass at most one of them in a single call."
-        )
+comms = VSCodeComms()
+session = Session(comms)
+config = Config(session, WORKSPACE_CONFIG_KEYS, EXCLUDE_KEYS)
+
+# Bound methods, not wrappers: the signature is the documentation for these two,
+# and a wrapper would have to restate fifty keywords to keep completion on them.
+
+set_defaults = config.set_defaults
+set_viewer_config = config.set_viewer_config
+check_deprecated = config.check_deprecated
+validate_tool_args = config.validate_tool_args
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
-def set_viewer_config(
-    axes=None,
-    axes0=None,
-    grid=None,
-    center_grid=None,
-    ortho=None,
-    transparent=None,
-    black_edges=None,
-    explode=None,
-    zoom=None,
-    position=None,
-    quaternion=None,
-    target=None,
-    default_edgecolor=None,
-    default_opacity=None,
-    ambient_intensity=None,
-    direct_intensity=None,
-    metalness=None,
-    roughness=None,
-    zoom_speed=None,
-    pan_speed=None,
-    rotate_speed=None,
-    glass=None,
-    tools=None,
-    tree_width=None,
-    collapse=None,
-    reset_camera=None,
-    states=None,
-    tab=None,
-    clip_slider_0=None,
-    clip_slider_1=None,
-    clip_slider_2=None,
-    clip_normal_0=None,
-    clip_normal_1=None,
-    clip_normal_2=None,
-    clip_intersection=None,
-    clip_planes=None,
-    clip_object_colors=None,
-    zebra_count=None,
-    zebra_opacity=None,
-    zebra_direction=None,
-    zebra_color_scheme=None,
-    zebra_mapping_mode=None,
-    studio_environment=None,
-    studio_env_intensity=None,
-    studio_env_rotation=None,
-    studio_background=None,
-    studio_tone_mapping=None,
-    studio_exposure=None,
-    studio_shadow_intensity=None,
-    studio_shadow_softness=None,
-    studio_ao_intensity=None,
-    studio_texture_mapping=None,
-    studio_4k_env_maps=None,
-    analysis_tool=None,
-    port=None,
-    viewer=None,
-):
-    """Set viewer config"""
-    validate_tool_args(explode, analysis_tool)
-
-    if not is_jupyter_cadquery and port is None:
-        port = get_port()
-
-    config = {k: v for k, v in locals().items() if v is not None}
-
-    if config.get("collapse") is not None:
-        config["collapse"] = config["collapse"].value
-    if config.get("default_edgecolor") is not None:
-        config["default_edgecolor"] = Color(config["default_edgecolor"]).web_color
-    for key in (
-        "studio_environment",
-        "studio_background",
-        "studio_tone_mapping",
-        "studio_texture_mapping",
-        "analysis_tool",
-        "tab",
-    ):
-        if isinstance(config.get(key), Enum):
-            config[key] = config[key].value
-
-    data = {
-        "type": "ui",
-        "config": config,
-    }
-
-    try:
-        send_config(data, port=port, title=viewer)
-
-    except Exception as ex:
-        raise RuntimeError(
-            "Cannot set viewer config. Is the viewer running?\n" + str(ex.args)
-        ) from ex
-
-
-def get_default(key, port=None):
-    """Get default value for key"""
-    return get_defaults(port=port).get(key)
-
-
-def get_defaults(port=None):
-    """Get all defaults"""
-    result = dict(workspace_config(port=port))
-    result.update(DEFAULTS)
-    return result
-
-
-def set_defaults(
-    glass=None,
-    tools=None,
-    tree_width=None,
-    axes=None,
-    axes0=None,
-    grid=None,
-    ortho=None,
-    transparent=None,
-    default_opacity=None,
-    black_edges=None,
-    orbit_control=None,
-    collapse=None,
-    ticks=None,
-    center_grid=None,
-    grid_font_size=None,
-    up=None,
-    explode=None,
-    analysis_tool=None,
-    tab=None,
-    zoom=None,
-    reset_camera=None,
-    clip_slider_0=None,
-    clip_slider_1=None,
-    clip_slider_2=None,
-    clip_normal_0=None,
-    clip_normal_1=None,
-    clip_normal_2=None,
-    clip_intersection=None,
-    clip_planes=None,
-    clip_object_colors=None,
-    zebra_count=None,
-    zebra_opacity=None,
-    zebra_direction=None,
-    zebra_color_scheme=None,
-    zebra_mapping_mode=None,
-    pan_speed=None,
-    rotate_speed=None,
-    zoom_speed=None,
-    deviation=None,
-    angular_tolerance=None,
-    edge_accuracy=None,
-    default_color=None,
-    default_edgecolor=None,
-    ambient_intensity=None,
-    direct_intensity=None,
-    metalness=None,
-    roughness=None,
-    render_edges=None,
-    render_normals=None,
-    render_mates=None,
-    render_joints=None,
-    show_parent=None,
-    show_locals=None,
-    show_sketch_local=None,  # DEPRECATED
-    helper_scale=None,
-    mate_scale=None,  # DEPRECATED
-    studio_environment=None,
-    studio_env_intensity=None,
-    studio_env_rotation=None,
-    studio_background=None,
-    studio_tone_mapping=None,
-    studio_exposure=None,
-    studio_shadow_intensity=None,
-    studio_shadow_softness=None,
-    studio_ao_intensity=None,
-    studio_texture_mapping=None,
-    studio_4k_env_maps=None,
-    debug=None,
-    timeit=None,
-    port=None,
-    # Jupyter CadQuery
-    viewer=None,
-    cad_width=None,
-    height=None,
-):
-    # pylint: disable=line-too-long
-    """Set viewer defaults
-    Keywords to configure the viewer:
-    - UI
-        glass:              Use glass mode where tree is an overlay over the cad object (default=False)
-        tools:              Show tools (default=True)
-        tree_width:         Width of the object tree (default=240)
-
-    - Viewer
-        axes:               Show axes (default=False)
-        axes0:              Show axes at (0,0,0) (default=False)
-        grid:               Show grid (default=False)
-        ortho:              Use orthographic projections (default=True)
-        transparent:        Show objects transparent (default=False)
-        default_opacity:    Opacity value for transparent objects (default=0.5)
-        black_edges:        Show edges in black color (default=False)
-        orbit_control:      Mouse control use "orbit" control instead of "trackball" control (default=False)
-        collapse:           Collapse.LEAVES: collapse all single leaf nodes,
-                            Collapse.ROOT: expand root only,
-                            Collapse.ALL: collapse all nodes,
-                            Collapse.NONE: expand all nodes
-                            (default=Collapse.ROOT)
-        ticks:              Hint for the number of ticks in both directions (default=5)
-        center_grid:        Center the grid at the origin or center of mass (default=False)
-        grid_font_size:     Size for the font used for grid axis labels (default=12)
-        up:                 Use z-axis ('Z') or y-axis ('Y') as up direction for the camera (default="Z")
-        explode:            Turn on explode mode (default=False)
-        analysis_tool:      Activate one of the analysis tools (mutually exclusive
-                            with explode=True):
-                            AnalysisTool.PROPERTIES, AnalysisTool.DISTANCE,
-                            AnalysisTool.SELECT, AnalysisTool.OFF.
-                            String values also accepted ("properties", "distance",
-                            "select", "off"). Default=None (no change).
-        tab:                Switch the side panel tab:
-                            UiTab.TREE, UiTab.CLIP, UiTab.ZEBRA, UiTab.MATERIAL,
-                            UiTab.STUDIO. String values also accepted
-                            ("tree", "clip", "zebra", "material", "studio").
-                            Default=None (no change).
-
-        zoom:               Zoom factor of view (default=1.0)
-        position:           Camera position
-        quaternion:         Camera orientation as quaternion
-        target:             Camera look at target
-        reset_camera:       Camera.RESET: Reset camera position, rotation, zoom and target
-                            Camera.CENTER: Keep camera position, rotation, zoom, but look at center
-                            Camera.KEEP: Keep camera position, rotation, zoom, and target
-                            Or, choose one of the presets Camera.ISO, Camera.LEFT, Camera.RIGHT,
-                            Camera.TOP, Camera.BOTTOM, Camera.FRONT, Camera.BACK
-                            (default=Camera.RESET)
-        clip_slider_0:      Setting of clipping slider 0 (default=None)
-        clip_slider_1:      Setting of clipping slider 1 (default=None)
-        clip_slider_2:      Setting of clipping slider 2 (default=None)
-        clip_normal_0:      Setting of clipping normal 0 (default=[-1,0,0])
-        clip_normal_1:      Setting of clipping normal 1 (default=[0,-1,0])
-        clip_normal_2:      Setting of clipping normal 2 (default=[0,0,-1])
-        clip_intersection:  Use clipping intersection mode (default=[False])
-        clip_planes:        Show clipping plane helpers (default=False)
-        clip_object_colors: Use object color for clipping caps (default=False)
-
-        zebra_count:        Setting of zebra stripe count (default=9, range: 2-50)
-        zebra_opacity:      Setting of zebra opacity (default=1, range: 0-1)
-        zebra_direction:    Setting of zebra direction angle (default=0, range: 0-90)
-        zebra_color_scheme: Zebra color scheme: "blackwhite", "grayscale", or "colorful" (default="blackwhite")
-        zebra_mapping_mode: Zebra mapping mode: "reflection" or "normal" (default="reflection")
-
-        studio_environment:      Environment HDR map, use StudioEnvironment enum or a custom HDR URL
-                                 (default=StudioEnvironment.PROCEDURAL_STUDIO)
-        studio_env_intensity:    Intensity of environment lighting, 0-3.0 (default=1.0)
-        studio_env_rotation:     Rotation of environment map in degrees, 0-360 (default=0)
-        studio_background:       StudioBackground.ENVIRONMENT, .TRANSPARENT, .GRADIENT, .GRADIENT_DARK,
-                                 .WHITE, .GREY, .DARKGREY (default=StudioBackground.ENVIRONMENT)
-        studio_tone_mapping:     StudioToneMapping.NEUTRAL, .ACES, .NONE (default=StudioToneMapping.NEUTRAL)
-        studio_exposure:         Tone mapping exposure, 0-3.0 (default=1.0)
-        studio_shadow_intensity: Shadow intensity, 0-1.0 (default=0.5)
-        studio_shadow_softness:  Shadow softness, 0-1.0 (default=0.2)
-        studio_ao_intensity:     Ambient occlusion intensity, 0-3.0 (default=0.5)
-        studio_texture_mapping:  StudioTextureMapping.TRIPLANAR or .PARAMETRIC
-                                 (default=StudioTextureMapping.TRIPLANAR)
-        studio_4k_env_maps:      Use 4K resolution environment maps (default=False)
-
-        pan_speed:          Speed of mouse panning (default=1)
-        rotate_speed:       Speed of mouse rotate (default=1)
-        zoom_speed:         Speed of mouse zoom (default=1)
-
-    - Renderer
-        deviation:          Shapes: Deviation from linear deflection value (default=0.1)
-        angular_tolerance:  Shapes: Angular deflection in radians for tessellation (default=0.2)
-        edge_accuracy:      Edges: Precision of edge discretization (default: mesh quality / 100)
-
-        default_color:      Default mesh color (default=(232, 176, 36))
-        default_edgecolor:  Default mesh color (default=(128, 128, 128))
-        ambient_intensity:  Intensity of ambient light (default=1.00)
-        direct_intensity:   Intensity of direct light (default=1.10)
-        metalness:          Metalness property of the default material (default=0.30)
-        roughness:          Roughness property of the default material (default=0.65)
-
-        render_edges:       Deprecated, use mode=Render.FACES or Render.ALL in show() instead
-        render_normals:     Render normals (default=False)
-        render_mates:       Render mates for MAssemblies (default=False)
-        render_joints:      Render mates for MAssemblies (default=False)
-        show_parent:        Render parent of faces, edges or vertices as wireframe (default=False)
-        show_locals:        In build123d show local part/sketch/line in addition to the relocated
-                            object (default=True)
-        helper_scale:       Scale of rendered helpers (locations, axis, mates for MAssemblies) (default=1)
-                            If it is a float < 1, used the max distance to nested bounding box times
-                            helper_scale to determine the absolut value of it
-
-    - Debug
-        debug:              Show debug statements to the VS Code browser console (default=False)
-        timeit:             Show timing information from level 0-3 (default=False)
-
-    - VS Code only:
-        port:              THe port the viewer is running on
-
-    - Jupyter Cadquery only:
-        viewer:             The title of the sidecar in Jupyter CadQuery
-        cad_width:          The viewer width in  Jupyter CadQuery
-        height:             The viewer height in  Jupyter CadQuery
-    """
-
-    validate_tool_args(explode, analysis_tool)
-
-    kwargs = {k: v for k, v in locals().items() if v is not None}
-
-    kwargs = check_deprecated(kwargs)
-
-    for key, value in kwargs.items():
-        if key in CONFIG_KEYS or (
-            is_jupyter_cadquery and key in ["viewer", "cad_width", "height"]
-        ):
-            DEFAULTS[key] = value
-        elif key == "port":
-            continue
-        else:
-            print(f"'{key}' is an unknown config, ignored!")
-
-    set_viewer_config(
-        viewer=viewer,
-        port=port,
-        **{k: v for k, v in kwargs.items() if k in CONFIG_SET_KEYS},
-    )
-
-
-def preset(key, value, port=None):
-    """Set default value for key"""
-    return get_default(key, port=port) if value is None else value
-
-
-def ui_filter(conf):
-    """Filter out all non-UI keys from the config dict"""
-    return {k: v for k, v in conf.items() if k in CONFIG_UI_KEYS}
-
-
-def workspace_filter(conf):
-    """Filter out all non-workspace keys from the config dict"""
-    return {k: v for k, v in conf.items() if k in CONFIG_WORKSPACE_KEYS}
+# The small entry points keep the host keywords they have always taken, and open
+# the scope so the transport can act on them. `viewer` is Jupyter CadQuery's and
+# has always been accepted and ignored here - which is the superset rule the
+# show family follows, in the shape it already had.
+#
+# These wrap rather than nest: the core's own calls between these methods
+# (`combined_config` asks itself for `status` and `workspace_config`) go
+# straight to the methods, never back through here, so no scope is opened twice.
 
 
 def status(port=None, viewer=None, debug=False):
     """Get viewer status"""
-
-    if is_pytest():
-        return {}
-
-    if not is_jupyter_cadquery and port is None:
-        port = get_port()
-
-    response = send_command("status", port=port, title=viewer)
-    if debug:
-        return response.get("_debugStarted", False)
-
-    collapse_val = response.get("collapse")
-    if collapse_val is not None:
-        if collapse_val in COLLAPSE_REVERSE_MAPPING:
-            response["collapse"] = COLLAPSE_REVERSE_MAPPING[collapse_val]
-        else:
-            warnings.warn(f"Unknown collapse value from viewer: {collapse_val}")
-
-    return dict(sorted(response.items()))
+    session.begin({"port": port, "viewer": viewer})
+    try:
+        return config.status(debug=debug)
+    finally:
+        session.clear()
 
 
 def workspace_config(port=None, viewer=None):
     """Get viewer workspace config"""
-
-    if is_pytest():
-        return {
-            "_splash": False,
-            "default_facecolor": (238, 130, 238),
-            "default_thickedgecolor": (186, 85, 211),
-            "default_vertexcolor": (186, 85, 211),
-        }
-
-    if not is_jupyter_cadquery and port is None:
-        port = get_port()
+    session.begin({"port": port, "viewer": viewer})
     try:
-        conf = send_command("config", port=port, title=viewer)
-        mapping = {
-            "none": Collapse.NONE,
-            "leaves": Collapse.LEAVES,
-            "all": Collapse.ALL,
-            "root": Collapse.ROOT,
-            "E": Collapse.NONE,
-            "1": Collapse.LEAVES,
-            "C": Collapse.ALL,
-            "R": Collapse.ROOT,
-        }
-        if isinstance(conf.get("collapse"), str):
-            conf["collapse"] = mapping[conf.get("collapse", "R")]
-        if isinstance(conf.get("reset_camera"), str):
-            conf["reset_camera"] = Camera[conf.get("reset_camera", "KEEP").upper()]
-        return dict(conf)
-
-    except Exception as ex:
-        raise RuntimeError(
-            "Cannot access viewer config. Is the viewer running?\n" + str(ex.args)
-        ) from ex
+        return config.workspace_config()
+    finally:
+        session.clear()
 
 
 def combined_config(port=None, viewer=None):
     """Get combined config from workspace and status"""
-
-    if not is_jupyter_cadquery and port is None:
-        port = get_port()
-
+    session.begin({"port": port, "viewer": viewer})
     try:
-        wspace_config = workspace_config(port=port, viewer=viewer)
-        wspace_status = status(port=port, viewer=viewer)
-
-    except Exception as ex:
-        raise RuntimeError(
-            "Cannot access viewer config. Is the viewer running?\n" + str(ex.args)
-        ) from ex
-
-    use_status = not wspace_config.get("_splash", False)
-
-    if use_status:
-        wspace_config.update(workspace_filter(wspace_status))
-
-    wspace_config.update(DEFAULTS)
-
-    return dict(sorted(wspace_config.items()))
+        return config.combined_config()
+    finally:
+        session.clear()
 
 
 def get_changed_config(key=None, port=None):
     """Get changed config from workspace and status"""
-    wspace_config = workspace_config(port=port)
-    wspace_config.update(DEFAULTS)
-    if key is None:
-        return wspace_config
-    else:
-        return wspace_config.get(key)
+    session.begin({"port": port})
+    try:
+        return config.get_changed_config(key=key)
+    finally:
+        session.clear()
+
+
+def get_defaults(port=None):
+    """Get all defaults"""
+    session.begin({"port": port})
+    try:
+        return config.get_defaults()
+    finally:
+        session.clear()
+
+
+def get_default(key, port=None):
+    """Get default value for key"""
+    session.begin({"port": port})
+    try:
+        return config.get_default(key)
+    finally:
+        session.clear()
+
+
+def preset(key, value, port=None):
+    """The default for key, unless a value was given"""
+    session.begin({"port": port})
+    try:
+        return config.preset(key, value)
+    finally:
+        session.clear()
 
 
 def reset_defaults(port=None):
     """Reset defaults not given in workspace config"""
-    global DEFAULTS  # pylint: disable=global-statement
-
-    config = {
-        key: value
-        for key, value in workspace_config(port=port).items()
-        if key in CONFIG_SET_KEYS
-    }
-    config["reset_camera"] = Camera.KEEP
-
-    set_viewer_config(**config)
-
-    if config.get("transparent") is not None:
-        set_viewer_config(transparent=config["transparent"])
-
-    DEFAULTS = {
-        "render_normals": False,
-        "render_mates": False,
-        "render_joints": False,
-        "helper_scale": 1.0,
-        "show_parent": False,
-        "show_locals": True,
-        "timeit": False,
-        # "collapse": Collapse.ROOT,
-        "debug": False,
-        # "reset_camera": Camera.RESET,
-    }
-
-
-def check_deprecated(kwargs, _length=1):
-    """Check for deprecated arguments"""
-    if kwargs.get("mate_scale") is not None:
-        print("\nmate_scale is deprecated, use helper_scale instead\n")
-        kwargs["helper_scale"] = kwargs["mate_scale"]
-        del kwargs["mate_scale"]
-
-    if kwargs.get("reset_camera") is True:
-        print(
-            "\n'reset_camera=True' is deprecated, use 'reset_camera=Camera.RESET' instead\n"
-        )
-        kwargs["reset_camera"] = Camera.RESET
-
-    if kwargs.get("reset_camera") is False:
-        print(
-            "\n'reset_camera=False' is deprecated, use 'reset_camera=Camera.CENTER' instead\n"
-        )
-        kwargs["reset_camera"] = Camera.CENTER
-
-    if kwargs.get("collapse") == "C":
-        print("\n'collapse=\"C\"' is deprecated, use 'collapse=Collapse.ALL' instead\n")
-        kwargs["collapse"] = Collapse.ALL
-
-    if kwargs.get("collapse") == "1" or kwargs.get("collapse") == 1:
-        print(
-            "\n'collapse=\"1\"' is deprecated, use 'collapse=Collapse.LEAVES' instead\n"
-        )
-        kwargs["collapse"] = Collapse.LEAVES
-
-    if kwargs.get("collapse") == "R":
-        print(
-            "\n'collapse=\"R\"' is deprecated, use 'collapse=Collapse.ROOT' instead\n"
-        )
-        kwargs["collapse"] = Collapse.ROOT
-
-    if kwargs.get("collapse") == "E":
-        print(
-            "\n'collapse=\"E\"' is deprecated, use 'collapse=Collapse.NONE' instead\n"
-        )
-        kwargs["collapse"] = Collapse.NONE
-
-    if kwargs.get("render_edges") is not None:
-        warnings.warn(
-            "render_edges is deprecated, use modes=Render.FACES or Render.ALL in show() instead",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        if kwargs.get("modes") is None:
-            if kwargs["render_edges"] is True:
-                kwargs["modes"] = [Render.ALL] * _length
-            else:
-                kwargs["modes"] = [Render.FACES] * _length
-
-        del kwargs["render_edges"]
-
-    if kwargs.get("control") is not None:
-        print(
-            "\n'control=\"orbit\" or \"trackball\"' is deprecated, use 'orbit_control=True' or 'False' instead\n"
-        )
-        kwargs["orbit_control"] = kwargs["control"] == "orbit"
-
-    if kwargs.get("show_sketch_local") is not None:
-        print("\n'show_sketch_local' is deprecated, use 'show_locals' instead\n")
-        kwargs["show_locals"] = kwargs["show_sketch_local"]
-        del kwargs["show_sketch_local"]
-
-    return kwargs
+    session.begin({"port": port})
+    try:
+        return config.reset_defaults()
+    finally:
+        session.clear()

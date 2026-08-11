@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ocp_viewer_core.colors import BaseColorMap
+
 from colorsys import hsv_to_rgb, rgb_to_hsv
 from random import randrange, seed, random
 from webcolors import name_to_rgb
@@ -22,9 +24,6 @@ from webcolors import name_to_rgb
 __all__ = [
     "BaseColorMap",
     "ColorMap",
-    "get_colormap",
-    "set_colormap",
-    "unset_colormap",
     "web_to_rgb",
 ]
 
@@ -35,28 +34,6 @@ try:
 
 except Exception:  # pylint: disable=bare-except
     HAS_MATPLOTLIB = False
-
-
-COLORMAP = None
-
-
-def get_colormap():
-    """Get the current colormap"""
-    if COLORMAP is not None:
-        COLORMAP.reset()
-    return COLORMAP
-
-
-def set_colormap(colormap):
-    """Set the current colormap"""
-    global COLORMAP  # pylint: disable=global-statement
-    COLORMAP = colormap
-
-
-def unset_colormap():
-    """Unset the current colormap"""
-    global COLORMAP  # pylint: disable=global-statement
-    COLORMAP = None
 
 
 #
@@ -278,24 +255,6 @@ def hex_to_rgb(hexcolor):
     """Convert a hex color name to RGB"""
     rgb = hex_to_rgb(hexcolor)
     return (rgb.red / 255, rgb.green / 255, rgb.blue / 255)
-
-
-class BaseColorMap:
-    """Base class for color maps"""
-
-    def __init__(self):
-        self.index = 0
-        self.alpha = 1.0
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        raise NotImplementedError()
-
-    def reset(self):
-        """Reset the color map"""
-        self.index = 0
 
 
 class ListedColorMap(BaseColorMap):

@@ -25,11 +25,20 @@ STARTUP_TIMEOUT = 20.0  # seconds
 
 @pytest.fixture(autouse=True)
 def disable_pytest_stub():
-    """`OCP_VSCODE_PYTEST=1` short-circuits `workspace_config`; turn it off."""
-    old = os.environ.pop("OCP_VSCODE_PYTEST", None)
+    """The stub short-circuits `workspace_config`; turn it off.
+
+    Two variables, because two packages answer the question: OCP_VSCODE_PYTEST
+    for this one and OCP_VIEWER_PYTEST for ocp-viewer-core, which is where
+    `Config.workspace_config` reads it.
+    """
+    old = {
+        name: os.environ.pop(name, None)
+        for name in ("OCP_VSCODE_PYTEST", "OCP_VIEWER_PYTEST")
+    }
     yield
-    if old is not None:
-        os.environ["OCP_VSCODE_PYTEST"] = old
+    for name, value in old.items():
+        if value is not None:
+            os.environ[name] = value
 
 
 @pytest.fixture(autouse=True)

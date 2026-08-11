@@ -34,6 +34,9 @@ from ocp_tessellate.ocp_utils import (
     serialize,
     loc_to_tq,
 )
+from ocp_viewer_core.comms import Comms
+from ocp_viewer_core.config import Collapse
+
 from .state import get_ports, update_state, get_config_file
 from .utils import comms_warning
 
@@ -71,6 +74,7 @@ class MessageType(enum.IntEnum):
 
 
 __all__ = [
+    "VSCodeComms",
     "send_data",
     "send_command",
     "send_response",
@@ -191,8 +195,6 @@ def _send(data, message_type, port=None, timeit=False):
             except (ConnectionRefusedError, OSError, WebSocketException) as ex:
                 comms_warning(f"Connection error: {ex}\nMessage: {data}")
                 # set some dummy values to avoid errors
-                from ocp_vscode.config import Collapse  # late import to break cycle
-
                 return {
                     "collapse": Collapse.ROOT,
                     "_splash": False,
@@ -203,8 +205,6 @@ def _send(data, message_type, port=None, timeit=False):
             except Exception as ex:
                 comms_warning(f"Unexpected error: {ex}\n{traceback.format_exc()}")
                 # set some dummy values to avoid errors
-                from ocp_vscode.config import Collapse  # late import to break cycle
-
                 return {
                     "collapse": Collapse.ROOT,
                     "_splash": False,
@@ -371,3 +371,44 @@ def set_connection_file():
                 )
         else:
             print("Jupyter kernel not responding")
+
+
+class VSCodeComms(Comms[None]):
+    """ocp_vscode's transport, as the core asks for it.
+
+    A thin pass to the functions above rather than to `_send` underneath them,
+    so every behaviour they carry comes with it: `send_command` unwrapping a
+    status reply, the dummy config a refused connection answers with, the
+    warning when the measurement backend is not listening.
+
+    `port` is read out of the keywords of the call in flight rather than taken
+    at construction, because one Viewer serves every viewer this process talks
+    to - `show(obj, port=3939)` and `show(obj, port=3940)` are one bound `show`
+    - and because `port=None` is what keeps discovery lazy. Resolving a port
+    here would run `find_and_set_port()` at `import ocp_vscode`, which prompts
+    when more than one viewer is live.
+
+    No handle: the webview has nothing to hand back, so `send_data` returns None
+    and `is_handle` keeps its inherited False.
+    """
+
+    @property
+    def port(self):
+        """The port this call is addressed to, or None to let discovery decide."""
+        return self.keywords.get("port")
+
+    def send_data(self, data, timeit=False) -> None:
+        send_data(data, port=self.port, timeit=timeit)
+        return None
+
+    def send_config(self, config, timeit=False) -> None:
+        send_config(config, port=self.port, timeit=timeit)
+
+    def send_command(self, data, timeit=False):
+        return send_command(data, port=self.port, timeit=timeit)
+
+    def send_backend(self, data, timeit=False) -> None:
+        send_backend(data, port=self.port, timeit=timeit)
+
+    def send_response(self, data, timeit=False) -> None:
+        send_response(data, port=self.port, timeit=timeit)

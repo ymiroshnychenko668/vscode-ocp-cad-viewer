@@ -11,12 +11,15 @@ import cadquery as cq
 def enable_real_viewer():
     """These tests need real viewer interaction, so disable the pytest stub temporarily."""
     old_pytest = os.environ.pop("OCP_VSCODE_PYTEST", None)
+    old_core_pytest = os.environ.pop("OCP_VIEWER_PYTEST", None)
     # Set port to avoid interactive prompt when multiple viewers exist
     old_port = os.environ.get("OCP_PORT")
     os.environ["OCP_PORT"] = "3939"
     yield
     if old_pytest is not None:
         os.environ["OCP_VSCODE_PYTEST"] = old_pytest
+    if old_core_pytest is not None:
+        os.environ["OCP_VIEWER_PYTEST"] = old_core_pytest
     if old_port is not None:
         os.environ["OCP_PORT"] = old_port
     else:

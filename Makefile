@@ -97,10 +97,10 @@ reload: reload-tcv install-vsix
 # 	@twine check dist/*
 
 tests:
-	NATIVE_TESSELLATOR=0 OCP_VSCODE_PYTEST=1 pytest -s -W ignore tests/ 
+	NATIVE_TESSELLATOR=0 OCP_VSCODE_PYTEST=1 OCP_VIEWER_PYTEST=1 pytest -s -W ignore tests/ 
 
 native_tests:
-	NATIVE_TESSELLATOR=1 OCP_VSCODE_PYTEST=1 pytest -s -W ignore tests/ 
+	NATIVE_TESSELLATOR=1 OCP_VSCODE_PYTEST=1 OCP_VIEWER_PYTEST=1 pytest -s -W ignore tests/ 
 
 upload:
 	@twine upload dist/*
