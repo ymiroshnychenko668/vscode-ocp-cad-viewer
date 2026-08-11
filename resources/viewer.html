@@ -17,171 +17,124 @@ limitations under the License.
 
 -->
 
-<!-- {var} are template variables and will be resolved in display.js-->
+<!-- ocp_vscode's webview. Static: nothing is substituted into this file.
+
+     The two things it cannot know - where the extension put its resources, and
+     what the user's settings say - arrive in an `init` message, because a
+     webview URI is minted at runtime and a setting can change while the panel
+     is open. That is also why the modules are imported dynamically: their URLs
+     are in that message.
+
+     The standalone viewer is resources/viewer-standalone.html, a Jinja template
+     of its own. One file serving both hosts is what made every host-specific
+     line something to inject from outside. -->
 <html>
     <head>
         <meta charset="utf-8" />
         <title>OCP CAD Viewer</title>
         <link rel="icon" type="image/png" href="static/icon/ocp-eye.png" />
-        <link rel="stylesheet" href="{{ styleSrc }}" />
-        {{ standalone_scripts|safe }}
         <script type="module">
-            import { Viewer, Display, Timer } from "{{ scriptSrc }}";
-            {{ standalone_imports|safe }} // prettier-ignore
+            // Bound by `init`, before anything below is reachable: the message
+            // that carries the settings carries the module URLs with them.
+            var Viewer = null;
+            var Display = null;
+            var Timer = null;
+            var animate = null;
+            var applyConfig = null;
+            var buildDisplayOptions = null;
+            var createNotifier = null;
+            var createRenderer = null;
+            var currentStates = null;
+            var logo = null;
+            var preset = null;
+            var restoreStates = null;
+
+            async function init(paths, settings) {
+                const style = document.createElement("link");
+                style.rel = "stylesheet";
+                style.href = paths.style;
+                document.head.appendChild(style);
+
+                ({ Viewer, Display, Timer } = await import(paths.renderer));
+                ({
+                    animate,
+                    applyConfig,
+                    buildDisplayOptions,
+                    createNotifier,
+                    createRenderer,
+                    currentStates,
+                    logo,
+                    preset,
+                    restoreStates
+                } = await import(paths.core));
+
+                // Only what this host differs on. Every number the renderer
+                // itself defines - ambient light, metalness, the studio family -
+                // comes from the core, so two clients cannot drift apart on
+                // values neither of them chose. What is left is the user's VS
+                // Code settings, plus this surface's own answer about its tools.
+                displayOverrides = {
+                    treeWidth: settings.treeWidth,
+                    glass: settings.glass,
+                    tools: settings.tools,
+                    theme: settings.theme,
+                    zscaleTool: false
+                };
+                viewerOverrides = {
+                    tools: settings.tools,
+                    glass: settings.glass,
+                    up: settings.up,
+                    control: settings.control
+                };
+
+                // The splash is shown by the webview rather than posted to it:
+                // the model is the core's, and the three values that are not
+                // came in with the settings above.
+                const splash = logo();
+                showViewer(splash.data, {
+                    ...splash.config,
+                    theme: settings.theme,
+                    treeWidth: settings.treeWidth,
+                    keymap: settings.keymap
+                });
+            }
 
             var viewer = null;
             var display = null;
             var _shapes = null;
             var _meshData = null;
-            var _states = null;
             var _config = null;
-            var _zoom = null;
-            var _position = null;
             var _camera_distance = null;
-            var _quaternion = null;
-            var _target = null;
-            var _clipping = {
-                planeHelpers: null,
-                objectColors: null,
-                intersection: null
-            };
-            var _zebra = {
-                count: null,
-                opacity: null,
-                direction: null,
-                colorScheme: null,
-                mappingMode: null
-            };
-            var _relativeTime = null;
-            var oldStates = null;
             var viewerOptions = {};
             var last_bb_radius = null;
 
+            // The viewer's own state, as the renderer reports it. What used to
+            // be a variable per value here - status.zoom, status.position, _clipping,
+            // _zebra - is one object the notifier keeps, under the names the
+            // renderer notifies with: camelCase for the camera, which is sent
+            // straight to checkChanges, and snake_case for everything that goes
+            // through its notification map. render() writes into it too, after
+            // reading the camera back off the viewer.
+            //
+            // It is also what goes on the wire. The extension answers a status
+            // request with the last message the webview sent, replacing rather
+            // than merging, so a delta would lose every earlier value - and
+            // combined_config merges the viewer's state into the next show. The
+            // notifier's delta plus this snapshot is what preserves both.
+            var notifier = null;
+            var renderer = null;
+            var status = {};
+
             const minWidth = 450;
-            {{ standalone_comms|safe }} // prettier-ignore
+            const vscode = acquireVsCodeApi();
 
-            var message = {};
-
-            const displayDefaultOptions = {
-                cadWidth: 730,
-                height: 525,
-                treeWidth: JSON.parse("{{ treeWidth }}"), // make linter happy
-                glass: JSON.parse("{{ glass|tojson }}"), // make linter happy
-                theme: "{{ theme }}",
-                tools: JSON.parse("{{ tools|tojson }}"), // make linter happy
-                pinning: false,
-                keymap: {
-                    shift: "shiftKey",
-                    ctrl: "ctrlKey",
-                    meta: "metaKey",
-                    alt: "altKey"
-                },
-                newTreeBehavior: true,
-                externalMeasurementBackend: true,
-                measureTools: true,
-                selectTool: true,
-                explodeTool: true,
-                zscaleTool: false,
-                zebraTool: true
-            };
-
-            const viewerDefaultOptions = {
-                timeit: false,
-                tools: JSON.parse("{{ tools|tojson }}"), // make linter happy
-                glass: JSON.parse("{{ glass|tojson }}"), // make linter happy
-                up: "{{ up }}",
-                zoom: 1.0,
-                position: null,
-                quaternion: null,
-                target: null,
-                control: "{{ control }}",
-                centerGrid: false,
-                gridFontSize: 12,
-                newTreeBehavior: true,
-                studioEnvironment: "studio",
-                studioEnvIntensity: 1.0,
-                studioEnvRotation: 0,
-                studioBackground: "environment",
-                studioToneMapping: "neutral",
-                studioExposure: 1.0,
-                studioShadowIntensity: 0.5,
-                studioShadowSoftness: 0.2,
-                studioAOIntensity: 0.5,
-                studioTextureMapping: "parametric",
-                studio4kEnvMaps: false
-            };
-
-            const renderDefaultOptions = {
-                ambientIntensity: 1.0,
-                directIntensity: 1.1,
-                metalness: 0.3,
-                roughness: 0.65,
-                edgeColor: 0x707070,
-                defaultOpacity: 0.5,
-                normalLen: 0,
-                angularTolerance: 0.2,
-                deviation: 0.1,
-                defaultColor: "#e8b024"
-            };
+            var displayOverrides = {};
+            var viewerOverrides = {};
 
             function debugLog(tag, obj) {
                 console.log(tag, obj);
                 var msg = tag + (obj ? " " + JSON.stringify(obj) : "");
                 send("log", msg);
-            }
-
-            function addAnimationTrack(viewer, track) {
-                const [selector, action, times, values] = track;
-
-                switch (action) {
-                    case "t":
-                        viewer.addPositionTrack(selector, times, values);
-                        break;
-                    case "tx":
-                        viewer.addTranslationTrack(selector, "x", times, values);
-                        break;
-                    case "ty":
-                        viewer.addTranslationTrack(selector, "y", times, values);
-                        break;
-                    case "tz":
-                        viewer.addTranslationTrack(selector, "z", times, values);
-                        break;
-                    case "q":
-                        viewer.addQuaternionTrack(selector, times, values);
-                        break;
-                    case "rx":
-                        viewer.addRotationTrack(selector, "x", times, values);
-                        break;
-                    case "ry":
-                        viewer.addRotationTrack(selector, "y", times, values);
-                        break;
-                    case "rz":
-                        viewer.addRotationTrack(selector, "z", times, values);
-                        break;
-                    default:
-                        console.error(`Unknown animation action: ${action}`);
-                }
-            }
-
-            function vector3(initArray) {
-                if (viewer) {
-                    let v = viewer.camera.getCamera().position.clone(); // just get some THREE.Vector3
-                    if (initArray) {
-                        v.fromArray(initArray);
-                    } else {
-                        v.fromArray([0, 0, 0]);
-                    }
-                    return v;
-                } else {
-                }
-            }
-            function length(v) {
-                return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-            }
-
-            function normalize(v) {
-                let n = length(v);
-                return [v[0] / n, v[1] / n, v[2] / n];
             }
 
             function send(command, message) {
@@ -192,79 +145,49 @@ limitations under the License.
             }
 
             function nc(change) {
-                if (_config.debug) {
-                    debugLog("notify", change);
-                }
-                if (change.zoom !== undefined) {
-                    _zoom = change.zoom.new;
-                }
-                if (change.position !== undefined) {
-                    _position = change.position.new;
-                }
-                if (change.quaternion !== undefined) {
-                    _quaternion = change.quaternion.new;
-                }
-                if (change.target !== undefined) {
-                    _target = change.target.new;
-                }
-                if (change.clip_intersection !== undefined) {
-                    _clipping.intersection = change.clip_intersection.new;
-                }
-                if (change.clip_planes !== undefined) {
-                    _clipping.planeHelpers = change.clip_planes.new;
-                }
-                if (change.clip_object_colors !== undefined) {
-                    _clipping.objectColors = change.clip_object_colors.new;
-                }
-                if (change.zebra_count !== undefined) {
-                    _zebra.count = change.zebra_count.new;
-                }
-                if (change.zebra_opacity !== undefined) {
-                    _zebra.opacity = change.zebra_opacity.new;
-                }
-                if (change.zebra_direction !== undefined) {
-                    _zebra.direction = change.zebra_direction.new;
-                }
-                if (change.zebra_color_scheme !== undefined) {
-                    _zebra.colorScheme = change.zebra_color_scheme.new;
-                }
-                if (change.zebra_mapping_mode !== undefined) {
-                    _zebra.mappingMode = change.zebra_mapping_mode.new;
-                }
-                if (change.relative_time !== undefined) {
-                    _relativeTime = change.relative_time.new;
-                }
+                return notifier == null ? null : notifier.notify(change);
+            }
 
-                var changed = false;
-                Object.keys(change).forEach((k) => {
-                    if (
-                        // (k !== "states") &&
-                        change[k].new !== undefined
-                    ) {
-                        message[k] = change[k].new;
-                        changed = true;
-                    }
+            function makeRenderer() {
+                renderer = createRenderer({
+                    viewer: viewer,
+                    status: status,
+                    overrides: { viewer: viewerOverrides, theme: displayOverrides.theme },
+                    // A tree width is a resize, and only this host knows the
+                    // other two dimensions.
+                    resize: () => {
+                        const displayOptions = getDisplayOptions(_config.theme);
+                        viewer.resizeCadView(
+                            displayOptions.cadWidth,
+                            displayOptions.treeWidth,
+                            displayOptions.height,
+                            displayOptions.glass
+                        );
+                    },
+                    sendStatus: (snapshot) => send("status", snapshot),
+                    debug: _config != null && _config.debug ? debugLog : null
                 });
-                if (viewer != null && viewer.treeview != null) {
-                    // ensure to clone the object
-                    const states_json = JSON.stringify(viewer.treeview.getStates());
-                    const states = JSON.parse(states_json);
-                    if (oldStates == null || JSON.stringify(oldStates) != states_json) {
-                        message["states"] = states;
-                        oldStates = states;
-                        changed = true;
-                    }
-                }
-                if (changed) {
-                    send("status", message);
-                }
+            }
+
+            function makeNotifier() {
+                notifier = createNotifier({
+                    viewer: viewer,
+                    // The delta is what changed; the snapshot is what the
+                    // extension will answer the next status request with.
+                    // Event keys - a selection, a pick, the active tool - ride
+                    // on the delta only, so a selection made minutes ago is not
+                    // replayed into an unrelated update.
+                    send: (delta) => send("status", { ...status, ...delta }),
+                    debug: _config != null && _config.debug ? debugLog : null
+                });
+                status = notifier.status;
             }
 
             function normalizeWidth(width, glass, tools) {
                 const treeWidth =
                     glass || !tools
                         ? 0
-                        : preset(_config, "tree_width", displayDefaultOptions.treeWidth);
+                        : preset(_config, "treeWidth", displayOverrides.treeWidth);
                 return Math.max(minWidth - treeWidth, width - treeWidth - 20);
             }
 
@@ -279,39 +202,33 @@ limitations under the License.
                 };
             }
 
-            function preset(config, key, val) {
-                return config == null || config[key] == null ? val : config[key];
+            function getGeometry() {
+                const size = getSize();
+                const glass = preset(_config, "glass", displayOverrides.glass);
+                const tools = preset(_config, "tools", displayOverrides.tools);
+                return {
+                    cadWidth: normalizeWidth(size.width, glass, tools),
+                    height: normalizeHeight(size.height),
+                    treeWidth: preset(
+                        _config,
+                        "treeWidth",
+                        displayOverrides.treeWidth
+                    )
+                };
             }
 
             function getDisplayOptions(theme) {
-                const size = getSize();
-                const glass = preset(_config, "glass", displayDefaultOptions.glass);
-                theme = theme ? theme : displayDefaultOptions.theme;
-                const tools = preset(_config, "tools", displayDefaultOptions.tools);
-                const treeWidth = preset(_config, "tree_width", displayDefaultOptions.treeWidth);
-                const keymap = preset(_config, "modifier_keys", displayDefaultOptions.keymap);
-                const newTreeBehavior = preset(
+                const options = buildDisplayOptions(
                     _config,
-                    "new_tree_behavior",
-                    viewerDefaultOptions.newTreeBehavior
+                    displayOverrides,
+                    getGeometry()
                 );
-                const cadWidth = normalizeWidth(size.width, glass, tools);
-                return {
-                    glass: glass,
-                    treeWidth: treeWidth,
-                    cadWidth: cadWidth,
-                    height: normalizeHeight(size.height),
-                    theme: theme,
-                    tools: tools,
-                    keymap: keymap,
-                    newTreeBehavior: newTreeBehavior,
-                    measureTools: displayDefaultOptions.measureTools,
-                    selectTool: displayDefaultOptions.selectTool,
-                    explodeTool: displayDefaultOptions.explodeTool,
-                    zscaleTool: displayDefaultOptions.zscaleTool,
-                    zebraTool: displayDefaultOptions.zebraTool,
-                    externalMeasurementBackend: displayDefaultOptions.externalMeasurementBackend
-                };
+                // An explicit theme argument still wins: showViewer is called
+                // with config.theme, and the observer below with the host's.
+                if (theme) {
+                    options.theme = theme;
+                }
+                return options;
             }
 
             function showViewer(meshData, config) {
@@ -342,9 +259,13 @@ limitations under the License.
                     viewer.clear();
                 } else {
                     viewer = new Viewer(display, displayOptions, nc, null);
+                    // After the viewer, because both read it. `nc` is the
+                    // trampoline that bridges the notifier to the constructor.
+                    makeNotifier();
+                    makeRenderer();
                 }
 
-                if (_shapes) render();
+                if (_shapes) renderer.render(_meshData, _config);
 
                 viewer.glassMode(displayOptions.glass);
                 viewer.showTools(displayOptions.tools);
@@ -354,297 +275,6 @@ limitations under the License.
                 return viewer;
 
                 // viewer.trimUI(["axes", "axes0", "grid", "ortho", "more", "help"])
-            }
-
-            function render() {
-                const toCamelCase = (s) => s.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
-                const optionKeyOverrides = {
-                    default_edgecolor: "edgeColor",
-                    clip_planes: "clipPlaneHelpers",
-                    studio_4k_env_maps: "studio4kEnvMaps"
-                };
-
-                // prettier-ignore
-                const renderOptionKeys = [
-                    "ambient_intensity", "direct_intensity", "metalness", "roughness",
-                    "default_edgecolor", "default_opacity", "normal_len",
-                ];
-
-                const renderOptions = {};
-                for (const configKey of renderOptionKeys) {
-                    const optionKey = optionKeyOverrides[configKey] || toCamelCase(configKey);
-                    renderOptions[optionKey] = preset(
-                        _config,
-                        configKey,
-                        renderDefaultOptions[optionKey]
-                    );
-                }
-
-                // prettier-ignore
-                const viewerOptionKeys = [
-                    "axes", "axes0", "black_edges", "grid", "collapse", "ortho", "ticks",
-                    "center_grid", "grid_font_size", "timeit", "tools", "glass", "up",
-                    "transparent", "control", "pan_speed", "zoom_speed", "rotate_speed",
-                    "clip_slider_0", "clip_slider_1", "clip_slider_2",
-                    "clip_normal_0", "clip_normal_1", "clip_normal_2",
-                    "clip_intersection", "clip_planes", "clip_object_colors",
-                    "zebra_count", "zebra_opacity", "zebra_direction",
-                    "zebra_color_scheme", "zebra_mapping_mode",
-                    "studio_environment", "studio_env_intensity", "studio_env_rotation",
-                    "studio_background", "studio_tone_mapping", "studio_exposure",
-                    "studio_shadow_intensity", "studio_shadow_softness", "studio_ao_intensity",
-                    "studio_texture_mapping", "studio_4k_env_maps",
-                ];
-
-                viewerOptions = {};
-                for (const configKey of viewerOptionKeys) {
-                    const optionKey = optionKeyOverrides[configKey] || toCamelCase(configKey);
-                    viewerOptions[optionKey] = preset(
-                        _config,
-                        configKey,
-                        viewerDefaultOptions[optionKey]
-                    );
-                }
-
-                if (!_config.theme) {
-                    _config.theme = getDisplayOptions().theme;
-                }
-
-                var reset_camera = preset(_config, "reset_camera", "keep");
-
-                if (_config.debug) {
-                    debugLog("renderOptions", renderOptions);
-                    debugLog("viewerOptions", viewerOptions);
-                    debugLog("reset_camera", reset_camera);
-                }
-
-                const bbox = _shapes["bb"];
-                const center = [
-                    (bbox.xmax + bbox.xmin) / 2,
-                    (bbox.ymax + bbox.ymin) / 2,
-                    (bbox.zmax + bbox.zmin) / 2
-                ];
-                let bb_radius = Math.max(
-                    // bbox.boundingSphere().radius,
-                    Math.sqrt(
-                        Math.pow(bbox.xmax - bbox.xmin, 2) +
-                            Math.pow(bbox.ymax - bbox.ymin, 2) +
-                            Math.pow(bbox.zmax - bbox.zmin, 2)
-                    ),
-                    length(center)
-                );
-
-                // if (
-                //     reset_camera === "keep" &&
-                //     last_bb_radius != null &&
-                //     (bb_radius < last_bb_radius / 2 ||
-                //         bb_radius > last_bb_radius * 2)
-                // ) {
-                //     reset_camera = "center";
-                //     const msg = `Bounding box 2 times smaller/larger than before, changed reset_camera to Camera.CENTER`;
-                //     send("info", msg);
-                //     if (_config.debug) {
-                //         debugLog(msg);
-                //     }
-                // }
-                last_bb_radius = bb_radius;
-                // debugLog("bb_radius", bb_radius)
-
-                const useStoredState = reset_camera === "keep" || reset_camera === "center";
-                const newZoom = _config.zoom !== undefined;
-
-                if (!useStoredState) {
-                    // Reset mode: respect position settings from the object if provided
-                    if (_config.zoom !== undefined) {
-                        viewerOptions.zoom = _config.zoom;
-                    } else {
-                        viewerOptions.zoom = 1.0;
-                    }
-                    if (_config.position !== undefined) {
-                        viewerOptions.position = _config.position;
-                    }
-                    if (_config.quaternion !== undefined) {
-                        viewerOptions.quaternion = _config.quaternion;
-                    }
-                    if (_config.target !== undefined) {
-                        viewerOptions.target = _config.target;
-                    }
-                    _camera_distance = null;
-                } else {
-                    if (_config.position) {
-                        viewerOptions.position = _config.position;
-                    } else if (_position) {
-                        if (reset_camera === "keep") {
-                            const camera_distance = 2.5 * bb_radius;
-
-                            var p = [0, 0, 0];
-                            for (var i = 0; i < 3; i++) {
-                                p[i] = _position[i] - _target[i];
-                            }
-                            p = normalize(p);
-                            var offset = reset_camera === "keep" ? _target : [0, 0, 0];
-                            for (var i = 0; i < 3; i++) {
-                                p[i] = p[i] * camera_distance + offset[i];
-                            }
-                        } else if (reset_camera === "center") {
-                            // center
-                            var p = [0, 0, 0];
-                            for (var i = 0; i < 3; i++) {
-                                p[i] = _position[i] - _target[i] + center[i];
-                            }
-                            _target = center;
-                        }
-                        viewerOptions.position = p;
-                        // do nothing when reset_camera is a preset view
-                    }
-                    _position = viewerOptions.position;
-
-                    if (_config.quaternion) {
-                        viewerOptions.quaternion = _config.quaternion;
-                    } else if (_quaternion) {
-                        viewerOptions.quaternion = _quaternion;
-                    }
-                    _quaternion = viewerOptions.quaternion;
-
-                    if (_config.target) {
-                        viewerOptions.target = _config.target;
-                    } else if (_target) {
-                        viewerOptions.target = _target;
-                    }
-                    _target = viewerOptions.target;
-
-                    if (_config.zoom) {
-                        viewerOptions.zoom = _config.zoom;
-                    } else if (_zoom) {
-                        viewerOptions.zoom = _zoom;
-                    }
-                    _zoom = viewerOptions.zoom;
-                }
-
-                if (_config.debug) {
-                    debugLog("reset_camera", reset_camera);
-                    debugLog("_position", _position);
-                    debugLog("_quaternion", _quaternion);
-                    debugLog("_target", _target);
-                    debugLog("_zoom", _zoom);
-                }
-
-                // Apply clip and zebra settings (use last value if not in config).
-                // clip_slider_* and clip_normal_* are intentionally NOT in this list
-                // — three-cad-viewer now decides itself whether to keep previous
-                // values or reset (based on whether the bbox changed). We only
-                // forward an explicit value when the caller actually set one,
-                // which the viewerOptionKeys loop above already handles.
-                // prettier-ignore
-                const clipAndZebraMappings = [
-                    ["clip_intersection", "clipIntersection", _clipping.intersection],
-                    ["clip_planes", "clipPlaneHelpers", _clipping.planeHelpers],
-                    ["clip_object_colors", "clipObjectColors", _clipping.objectColors],
-                    ["zebra_count", "zebraCount", _zebra.count],
-                    ["zebra_opacity", "zebraOpacity", _zebra.opacity],
-                    ["zebra_direction", "zebraDirection", _zebra.direction],
-                    ["zebra_color_scheme", "zebraColorScheme", _zebra.colorScheme],
-                    ["zebra_mapping_mode", "zebraMappingMode", _zebra.mappingMode]
-                ];
-                for (const [configKey, optionKey, lastValue] of clipAndZebraMappings) {
-                    if (_config[configKey] != undefined) {
-                        viewerOptions[optionKey] = _config[configKey];
-                    } else {
-                        viewerOptions[optionKey] = lastValue;
-                    }
-                }
-                // clip_slider_0/1/2 are already handled by the viewerOptionKeys
-                // loop above: when _config has no value, viewerOptions.clipSliderN
-                // ends up undefined, so three-cad-viewer applies its bbox-aware
-                // default/keep policy.
-
-                if (_config.tab) {
-                    // Pass tab into render() so three-cad-viewer can build the
-                    // scene directly in the target tab, skipping the CAD-mode
-                    // paint that would otherwise flicker before a post-render
-                    // setActiveTab call.
-                    viewerOptions.tab = _config.tab;
-                }
-
-                if (_config.debug) {
-                    debugLog("viewerOptions (modified)", viewerOptions);
-                }
-
-                debugLog("Rendering objects with three-cad-viewer");
-                viewer.render(_meshData, renderOptions, viewerOptions);
-                debugLog("Rendering done");
-
-                if (_config.tree_width) {
-                    const displayOptions = getDisplayOptions(_config.theme);
-                    viewer.resizeCadView(
-                        displayOptions.cadWidth,
-                        displayOptions.treeWidth,
-                        displayOptions.height,
-                        displayOptions.glass
-                    );
-                }
-
-                if (!newZoom && reset_camera === "keep" && _camera_distance != null) {
-                    // debugLog("camera_distance", _camera_distance, viewer.camera.camera_distance,
-                    //          viewer.camera.camera_distance/_camera_distance);
-                    viewer.setCameraZoom(
-                        ((_zoom == null ? 1.0 : _zoom) * viewer.camera.camera_distance) /
-                            _camera_distance
-                    );
-                }
-
-                // prettier-ignore
-                const views = ["iso", "left", "right", "top", "bottom", "rear", "front"];
-                if (views.includes(reset_camera)) {
-                    viewer.setView(reset_camera);
-                }
-
-                _position = message["position"] = viewer.getCameraPosition();
-                _quaternion = message["quaternion"] = viewer.getCameraQuaternion();
-                _target = message["target"] = viewer.controls.getTarget().toArray();
-                _zoom = message["zoom"] = viewer.getCameraZoom();
-                _camera_distance = viewer.camera.camera_distance;
-
-                // Sliders and normals are no longer captured — three-cad-viewer
-                // owns persistence policy (keep on same bbox, reset on different).
-                _clipping = {
-                    planeHelpers: viewer.getClipPlaneHelpers(),
-                    objectColors: viewer.getObjectColorCaps(),
-                    intersection: viewer.getClipIntersection()
-                };
-                _zebra = {
-                    count: viewer.getZebraCount(),
-                    opacity: viewer.getZebraOpacity(),
-                    direction: viewer.getZebraDirection(),
-                    colorScheme: viewer.getZebraColorScheme(),
-                    mappingMode: viewer.getZebraMappingMode()
-                };
-                _relativeTime = viewer.getRelativeTime();
-                send("status", message);
-
-                if (_config.explode) {
-                    viewer.setExplode(true);
-                }
-
-                // analysis_tool is applied by show() the same way explode is.
-                // The viewer instance is fresh (showViewer disposes the old one
-                // and creates a new one), so no prior tool needs deactivating —
-                // "off" / undefined just leaves things deactivated.
-                if (
-                    _config.analysis_tool === "distance" ||
-                    _config.analysis_tool === "properties" ||
-                    _config.analysis_tool === "select"
-                ) {
-                    viewer.display.setTool(_config.analysis_tool, true);
-                }
-
-                // _config.tab is applied via viewerOptions.tab above so the
-                // scene builds directly in the target tab. No setActiveTab
-                // call here — it would re-trigger a switch and flicker.
-
-                if (_config.debug) {
-                    console.log("viewer", viewer);
-                }
             }
 
             window.addEventListener(
@@ -669,35 +299,33 @@ limitations under the License.
             debugLog("resize listener registered");
 
             window.addEventListener("message", (event) => {
-                function getStates(meshData) {
-                    const states = {};
-                    function walk(meshData) {
-                        if (meshData.parts != null) {
-                            for (var i in meshData.parts) {
-                                walk(meshData.parts[i]);
-                            }
-                        } else {
-                            states[meshData.id] = meshData.state;
-                        }
-                    }
-                    walk(meshData);
-                    return states;
-                }
-
                 var data =
                     typeof event.data === "string" || event.data instanceof String
                         ? JSON.parse(event.data)
                         : event.data;
 
+                if (data.type === "init") {
+                    init(data.paths, data.settings);
+                    return;
+                }
+
+                if (data.type === "logo") {
+                    // The splash lives in the core, so the host asks for it by
+                    // name and sends only what it alone knows - its theme, its
+                    // tree width, its modifier keys. It used to ship its own
+                    // 200 kB copy and post the whole model across; two hosts had
+                    // the same file byte for byte.
+                    const splash = logo();
+                    data = {
+                        ...splash,
+                        config: { ...splash.config, ...(data.config || {}) }
+                    };
+                }
+
                 if (data.type === "data" && data?.data?.shapes?.parts?.length > 0) {
                     const timer = new Timer("webView", data.config.timeit);
 
-                    var old_states =
-                        viewer == null
-                            ? {}
-                            : viewer.treeview == null
-                              ? {}
-                              : viewer.treeview.getStates();
+                    const oldStates = currentStates(viewer);
 
                     let meshData = data.data;
                     let config = data.config;
@@ -712,35 +340,12 @@ limitations under the License.
                     }
 
                     showViewer(meshData, config);
-                    var new_states = getStates(meshData.shapes);
 
-                    const new_keys = Object.keys(new_states);
-
-                    if (config.states) {
-                        // Explicit states from modes parameter take precedence.
-                        // Batch via setStates: one tree update + one re-render
-                        viewer.setStates(config.states);
-                    } else {
-                        // Restore the user's prior visibility choices for objects
-                        // that survive into the new model. Collect the changed keys
-                        // first, then apply them in a single batched setStates — a
-                        // per-key setState loop here is the same O(n^2) repaint storm
-                        // as the config.states path (toggling all edges off would
-                        // re-render the whole scene once per object otherwise).
-                        const restore = {};
-                        Object.keys(old_states).forEach((key) => {
-                            if (
-                                new_keys.includes(key) &&
-                                (new_states[key][0] !== old_states[key][0] ||
-                                    new_states[key][1] !== old_states[key][1])
-                            ) {
-                                restore[key] = old_states[key];
-                            }
-                        });
-                        if (Object.keys(restore).length > 0) {
-                            viewer.setStates(restore);
-                        }
-                    }
+                    // Explicit states win, otherwise the user's prior visibility
+                    // choices are restored for whatever survived into the new
+                    // model - in one batched setStates either way, because a
+                    // per-key loop is a repaint per key and freezes the host.
+                    restoreStates(viewer, meshData.shapes, oldStates, config.states);
                     timer.split("states updated");
 
                     timer.stop();
@@ -769,166 +374,47 @@ limitations under the License.
                     if (data.config.debug) {
                         debugLog("data.config", data.config);
                     }
-                    Object.keys(data.config).forEach((key) => {
-                        if (key === "axes") {
-                            viewer.setAxes(data.config[key]);
-                        } else if (key === "axes0") {
-                            viewer.setAxes0(data.config[key]);
-                        } else if (key === "grid") {
-                            viewer.setGrids(data.config[key]);
-                        } else if (key === "center_grid") {
-                            viewer.setGridCenter(data.config[key]);
-                        } else if (key === "ortho") {
-                            viewer.setOrtho(data.config[key]);
-                        } else if (key === "transparent") {
-                            viewer.setTransparent(data.config[key]);
-                        } else if (key === "black_edges") {
-                            viewer.setBlackEdges(data.config[key]);
-                        } else if (key === "zoom") {
-                            viewer.setCameraZoom(data.config[key]);
-                        } else if (key === "position") {
-                            viewer.setCameraPosition(data.config[key]);
-                        } else if (key === "quaternion") {
-                            viewer.setCameraQuaternion(data.config[key]);
-                        } else if (key === "up") {
-                            viewer.camera.up = data.config[key];
-                            viewer.camera.updateProjectionMatrix();
-                        } else if (key === "target") {
-                            viewer.setCameraTarget(data.config[key]);
-                        } else if (key === "default_edgecolor") {
-                            viewer.setEdgeColor(data.config[key]);
-                        } else if (key === "default_opacity") {
-                            viewer.setOpacity(data.config[key]);
-                        } else if (key === "ambient_intensity") {
-                            viewer.setAmbientLight(data.config[key]);
-                        } else if (key === "direct_intensity") {
-                            viewer.setDirectLight(data.config[key]);
-                        } else if (key === "metalness") {
-                            viewer.setMetalness(data.config[key]);
-                        } else if (key === "roughness") {
-                            viewer.setRoughness(data.config[key]);
-                        } else if (key === "zoom_speed") {
-                            viewer.setZoomSpeed(data.config[key]);
-                        } else if (key === "pan_speed") {
-                            viewer.setPanSpeed(data.config[key]);
-                        } else if (key === "rotate_speed") {
-                            viewer.setRotateSpeed(data.config[key]);
-                        } else if (key === "glass") {
-                            viewer.glassMode(data.config[key]);
-                        } else if (key === "tools") {
-                            viewer.showTools(data.config[key]);
-                        } else if (key === "collapse") {
-                            viewer.collapseNodes(data.config[key]);
-                        } else if (key === "tree_width") {
+                    // One dispatch, shared with cad-viewer-widget, in place of
+                    // thirty-eight else-ifs that had drifted from its copy. It
+                    // also brings the eleven studio setters this host never had:
+                    // set_viewer_config accepted them and the webview dropped
+                    // them without a word.
+                    applyConfig(viewer, data.config, {
+                        // Only the host knows the other two dimensions, so a
+                        // viewport key is a resize rather than a setter.
+                        resize: (key, value) => {
                             const displayOptions = getDisplayOptions(data.config.theme);
                             const glass =
                                 data.config.glass !== undefined
                                     ? data.config.glass
                                     : displayOptions.glass;
                             viewer.resizeCadView(
-                                displayOptions.cadWidth,
-                                data.config[key],
-                                displayOptions.height,
+                                key === "cadWidth" ? value : displayOptions.cadWidth,
+                                key === "treeWidth" ? value : displayOptions.treeWidth,
+                                key === "height" ? value : displayOptions.height,
                                 glass
                             );
-                        } else if (key === "reset_camera") {
-                            if (data.config[key] === "reset") {
-                                viewer.setView("iso");
-                                viewer.resize();
-                            } else if (
-                                ["iso", "left", "right", "top", "bottom", "rear", "front"].includes(
-                                    data.config[key]
-                                )
-                            ) {
-                                viewer.setView(data.config[key]);
-                            }
-                        } else if (key === "explode") {
-                            viewer.setExplode(data.config[key]);
-                        } else if (key === "analysis_tool") {
-                            const newTool = data.config[key];
-                            // Deactivate whichever measurement tool is active.
-                            // setTool(name, false) is a no-op if name wasn't on,
-                            // so this is safe.
-                            const active = viewer.state.get("activeTool");
-                            if (
-                                typeof active === "string" &&
-                                ["distance", "properties", "select"].includes(active)
-                            ) {
-                                viewer.display.setTool(active, false);
-                            }
-                            // Activate the new one ("off" leaves everything off).
-                            if (
-                                newTool === "distance" ||
-                                newTool === "properties" ||
-                                newTool === "select"
-                            ) {
-                                viewer.display.setTool(newTool, true);
-                            }
-                        } else if (key === "states") {
-                            // Batch via setStates: one re-render instead of a full
-                            // repaint per key (a per-key setState loop over a large
-                            // model freezes VS Code / the machine).
-                            const valid = Object.keys(viewer.treeview.getStates());
-                            const newStates = {};
-                            Object.keys(data.config[key]).forEach((key2) => {
-                                if (valid.includes(key2)) {
-                                    newStates[key2] = data.config[key][key2];
-                                }
-                            });
-                            if (Object.keys(newStates).length > 0) {
-                                viewer.setStates(newStates);
-                            }
-                        } else if (key === "tab") {
-                            viewer.setActiveTab(data.config[key]);
-                        } else if (key === "clip_intersection") {
-                            viewer.setClipIntersection(data.config[key]);
-                        } else if (key.startsWith("clip_slider")) {
-                            const index = parseInt(key.slice(-1));
-                            viewer.setClipSlider(index, data.config[key]);
-                        } else if (key.startsWith("clip_normal")) {
-                            const index = parseInt(key.slice(-1));
-                            viewer.setClipNormal(
-                                index,
-                                data.config[key],
-                                viewer.getClipSlider(index)
-                            );
-                        } else if (key === "clip_planes") {
-                            viewer.setClipPlaneHelpers(data.config[key]);
-                        } else if (key === "clip_object_colors") {
-                            viewer.setClipObjectColorCaps(data.config[key]);
-                        } else if (key === "zebra_count") {
-                            viewer.setZebraCount(data.config[key]);
-                        } else if (key === "zebra_opacity") {
-                            viewer.setZebraOpacity(data.config[key]);
-                        } else if (key === "zebra_direction") {
-                            viewer.setZebraDirection(data.config[key]);
-                        } else if (key === "zebra_color_scheme") {
-                            viewer.setZebraColorScheme(data.config[key]);
-                        } else if (key === "zebra_mapping_mode") {
-                            viewer.setZebraMappingMode(data.config[key]);
+                        },
+                        onUnknown: (key) => {
+                            debugLog(`ui: no setter for '${key}'`);
                         }
                     });
                 } else if (data.type === "animation") {
-                    // turn off explode
-                    viewer.setExplode(false);
-                    const tracks = data.data;
-                    for (var track of tracks) {
-                        addAnimationTrack(viewer, track);
-                    }
-                    const duration = Math.max(...tracks.map((track) => Math.max(...track[2])));
-                    if (data.config.speed > 0) {
-                        viewer.initAnimation(duration, data.config.speed);
-                    }
+                    // Explode goes off first: both transform the same objects,
+                    // and animating an already-displaced model is wrong.
+                    animate(viewer, data.data, data.config.speed, (action) => {
+                        console.error(`Unknown animation action: ${action}`);
+                    });
                 }
             });
             debugLog("message listener registered");
 
             const observer = new MutationObserver(() => {
                 // handle theme change inside webview
-                if (displayDefaultOptions.theme === "browser") {
+                if (displayOverrides.theme === "browser") {
                     viewer.setTheme(document.body.className === "vscode-light" ? "light" : "dark");
                 } else {
-                    viewer.setTheme(displayDefaultOptions.theme);
+                    viewer.setTheme(displayOverrides.theme);
                 }
             });
             observer.observe(document.body, {
@@ -944,7 +430,7 @@ limitations under the License.
         </script>
     </head>
 
-    <body style="padding: 0px; width: fit-content" {{ standalone_init|safe }}>
+    <body style="padding: 0px; width: fit-content">
         <div id="cad_viewer"></div>
     </body>
 </html>

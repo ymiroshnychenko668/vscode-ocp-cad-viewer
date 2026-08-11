@@ -15,14 +15,13 @@
    limitations under the License.
 */
 
+import * as fs from "fs";
 import * as os from "os";
 import * as vscode from "vscode";
 import { OCPCADViewer } from "./viewer";
-import { template } from "./display";
 import { createServer, Server } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import * as output from "./output";
-import { logo } from "./logo";
 import { StatusManagerProvider } from "./statusManager";
 import { getPythonPath, getTempFolder } from "./utils";
 import { removeState, getConfig } from "./state";
@@ -65,12 +64,42 @@ export class OCPCADController {
     }
 
     public async logo() {
+        // Everything the webview cannot work out for itself, in one message:
+        // where the resources are, and what the settings say. The page is a
+        // static file - nothing is substituted into it - so this is the whole
+        // of the handshake, and it ends with the splash on screen.
+        //
+        // The names are the renderer's, like everything else that crosses this
+        // boundary. The splash model itself is ocp-viewer-core's and does not
+        // travel: the webview has the core loaded and asks it by name.
         var conf = this.config();
-        var l: any = logo();
-        l["config"]["modifier_keys"] = conf["modifier_keys"];
-        l["config"]["theme"] = conf["theme"];
-        l["config"]["tree_width"] = conf["tree_width"];
-        return await this.view?.postMessage(l);
+        return await this.view?.postMessage({
+            type: "init",
+            paths: {
+                style: this.resourceUri("three-cad-viewer", "dist", "three-cad-viewer.css"),
+                renderer: this.resourceUri(
+                    "three-cad-viewer",
+                    "dist",
+                    "three-cad-viewer.esm.js"
+                ),
+                core: this.resourceUri("ocp-viewer-core", "src", "index.js")
+            },
+            settings: {
+                keymap: conf["modifier_keys"],
+                theme: conf["theme"],
+                treeWidth: conf["tree_width"],
+                glass: conf["glass"],
+                tools: conf["tools"],
+                up: conf["up"],
+                control: conf["control"]
+            }
+        });
+    }
+
+    private resourceUri(...segments: string[]): string {
+        return this.view!.asWebviewUri(
+            vscode.Uri.joinPath(this.context.extensionUri, "node_modules", ...segments)
+        ).toString();
     }
 
     public config() {
@@ -136,29 +165,17 @@ export class OCPCADController {
                 let panel = OCPCADViewer.currentPanel;
                 this.view = panel?.getView();
                 if (this.view !== undefined) {
-                    const stylePath = vscode.Uri.joinPath(
-                        this.context.extensionUri,
-                        "node_modules",
-                        "three-cad-viewer",
-                        "dist",
-                        "three-cad-viewer.css"
-                    );
-                    const scriptPath = vscode.Uri.joinPath(
-                        this.context.extensionUri,
-                        "node_modules",
-                        "three-cad-viewer",
-                        "dist",
-                        "three-cad-viewer.esm.js"
-                    );
+                    // The page is a static file: nothing is substituted into
+                    // it, and what it cannot know arrives in the `init` message
+                    // below. display.ts existed to do that substituting.
                     const htmlPath = vscode.Uri.joinPath(
                         this.context.extensionUri,
                         "resources",
                         "viewer.html"
                     );
-                    const styleSrc = this.view.asWebviewUri(stylePath);
-                    const scriptSrc = this.view.asWebviewUri(scriptPath);
-                    const htmlSrc = this.view.asWebviewUri(htmlPath);
-                    OCPCADViewer.currentPanel?.update(template(styleSrc, scriptSrc, htmlSrc));
+                    OCPCADViewer.currentPanel?.update(
+                        fs.readFileSync(htmlPath.fsPath, "utf8")
+                    );
 
                     this.view.onDidReceiveMessage((message) => {
                         const msg = message;

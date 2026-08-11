@@ -35,19 +35,10 @@ import pyperclip
 
 CONFIG_FILE = Path.home() / ".ocpvscode_standalone"
 
-SCRIPTS = """
-    <script type="module" src="static/js/three-cad-viewer.esm.js"></script>
-    <script type="module" srv="static/js/comms.js"></script>
-    <script type="module" srv="static/js/logo.js"></script>
-"""
-
-JS = "./static/js/three-cad-viewer.esm.js"
-CSS = "./static/css/three-cad-viewer.css"
-
-STATIC = """
-        import { Comms } from "./static/js/comms.js";
-        import { logo } from "./static/js/logo.js";
-"""
+# The page is `resources/viewer-standalone.html`, copied to templates/ by
+# `make dist`. It is an ordinary Jinja template now: it used to be the same file
+# ocp_vscode's webview uses, which meant every line that differed between the
+# two hosts had to be injected into it from here as a string.
 
 PORT = 0
 
@@ -60,27 +51,6 @@ def cleanup():
 atexit.register(cleanup)
 
 
-def COMMS(host, port, max_retries=None):
-    if max_retries is None:
-        max_retries = ""
-    return f"""
-        const comms = new Comms("{host}", {port}, {max_retries});
-        const vscode = {{postMessage: (msg) => {{
-                comms.sendStatus(msg);
-            }}
-        }};
-        const standaloneViewer = () => {{
-            
-            const ocpLogo = logo();
-            
-            viewer = showViewer(ocpLogo.data, ocpLogo.config);
-            window.viewer = viewer;
-        }}
-        window.showViewer = standaloneViewer;
-    """
-
-
-INIT = """onload="showViewer()" """
 
 
 def save_png_data_url(data_url, output_path):
@@ -340,12 +310,11 @@ class Viewer:
         address, port = request.host.split(":")
         return render_template(
             "viewer.html",
-            standalone_scripts=SCRIPTS,
-            standalone_imports=STATIC,
-            standalone_comms=COMMS(address, port, max_retries=self.max_reconnect_attempts),
-            standalone_init=INIT,
-            styleSrc=CSS,
-            scriptSrc=JS,
+            ws_host=address,
+            ws_port=port,
+            max_retries=(
+                "" if self.max_reconnect_attempts is None else self.max_reconnect_attempts
+            ),
             treeWidth=self.config["tree_width"],
             **self.config,
         )
