@@ -270,12 +270,6 @@
           "description": "With the new behaviour the eye controls both icons, the mesh icon only the mesh behavior (default: true)",
           "order": 2
         },
-        "OcpCadViewer.view.dark": {
-          "type": "boolean",
-          "default": false,
-          "description": "Use dark mode (DEPRECATED)",
-          "order": 3
-        },
         "OcpCadViewer.view.theme": {
           "enum": [
             "browser",

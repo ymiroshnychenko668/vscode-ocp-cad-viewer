@@ -105,14 +105,7 @@ export class OCPCADController {
     public config() {
         let options = vscode.workspace.getConfiguration("OcpCadViewer.view");
 
-        let theme = options.get("theme");
-        if (options.get("dark") == true) {
-            vscode.window.showWarningMessage(
-                "Setting OcpCadViewer.view.dark is " +
-                    "deprecated, unset it and use OcpCadViewer.view.theme"
-            );
-            theme = "dark";
-        }
+        const theme = options.get("theme");
 
         let c: Record<string, any> = {
             theme: theme,
