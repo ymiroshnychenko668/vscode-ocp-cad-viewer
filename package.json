@@ -374,6 +374,12 @@
           "description": "Use orthographic camera (default: true)",
           "order": 17
         },
+        "OcpCadViewer.view.grid_font_size": {
+          "type": "number",
+          "default": 12,
+          "description": "Font size of the grid axis labels (default: 12)",
+          "order": 19
+        },
         "OcpCadViewer.view.ticks": {
           "type": "number",
           "default": 5,
