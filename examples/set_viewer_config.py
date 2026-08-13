@@ -2,6 +2,7 @@
 
 from ocp_vscode import *
 import cadquery as cq
+import time
 
 c = combined_config()
 
@@ -29,6 +30,7 @@ def check(conf):
         else:
             return _eq(a, b)
 
+    time.sleep(0.1)
     s = combined_config()
     s2 = status()
     for key in ["position", "quaternion", "target", "zoom"]:

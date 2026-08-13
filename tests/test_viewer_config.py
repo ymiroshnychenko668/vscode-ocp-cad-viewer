@@ -12,9 +12,15 @@ def enable_real_viewer():
     """These tests need real viewer interaction, so disable the pytest stub temporarily."""
     old_pytest = os.environ.pop("OCP_VSCODE_PYTEST", None)
     old_core_pytest = os.environ.pop("OCP_VIEWER_PYTEST", None)
-    # Set port to avoid interactive prompt when multiple viewers exist
+    # A port, to avoid the interactive prompt when several viewers are
+    # listening - but the caller's if they set one. Pinning 3939 unconditionally
+    # does not resolve that ambiguity, it decides it: a viewer auto-started in
+    # another VS Code window takes the default port, and the suite then tests
+    # that window instead of the one being developed against. Which is what
+    # happened on 2026-08-13 - 13 failures on 3939 and 28 passes on 3940, from
+    # the same file against the same code.
     old_port = os.environ.get("OCP_PORT")
-    os.environ["OCP_PORT"] = "3939"
+    os.environ["OCP_PORT"] = old_port if old_port else "3939"
     yield
     if old_pytest is not None:
         os.environ["OCP_VSCODE_PYTEST"] = old_pytest
