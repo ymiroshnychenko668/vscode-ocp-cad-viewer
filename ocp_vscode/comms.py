@@ -53,7 +53,6 @@ __all__ = [
     "send_command",
     "send_config",
     "send_data",
-    "send_response",
     "set_port",
 ]
 
@@ -130,10 +129,10 @@ def send_backend(data, port=None, timeit=False):
     return comms._send(data, MessageType.BACKEND, port, timeit)
 
 
-def send_response(data, port=None, timeit=False):
-    return comms._send(data, MessageType.BACKEND_RESPONSE, port, timeit)
-
-
 def listener(callback):
-    """The receiving loop, returned rather than run - a caller may want a thread."""
+    """The receiving loop, returned rather than run - a caller may want a thread.
+
+    Also what delivers the backend's answers: `callback` returns them and the
+    loop sends them, because the loop is what holds a connection to the viewer.
+    """
     return comms.listener(callback)

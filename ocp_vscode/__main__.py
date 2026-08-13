@@ -59,13 +59,15 @@ def main():
     if args.port is None:
         parser.error("--backend needs --port")
 
-    # The backend takes a transport rather than a port: which viewer it answers,
-    # and how, is this host's to say.
+    # The backend takes nothing: it computes an answer and returns it. Driving
+    # it and delivering that answer are this host's, and both are the listener's
+    # - it is the thing with a connection to the viewer.
     set_port(args.port)
-    backend = ViewerBackend(comms)
+    backend = ViewerBackend()
 
     try:
         backend.start()
+        comms.listener(backend.handle_event)()
     except ConnectionRefusedError:
         print(
             f"Cannot connect to OCP CAD Viewer on port {args.port}.\n"
