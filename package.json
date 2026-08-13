@@ -290,11 +290,10 @@
           "type": "string",
           "enum": [
             "Z",
-            "Y",
-            "L"
+            "Y"
           ],
           "default": "Z",
-          "description": "Provides up direction, 'Z', 'Y' or 'L' (legacy) (default: Z)",
+          "description": "Provides up direction, 'Z' or 'Y' (default: Z)",
           "order": 5
         },
         "OcpCadViewer.view.rotate_speed": {
@@ -365,7 +364,7 @@
             "all",
             "root"
           ],
-          "default": "1",
+          "default": "leaves",
           "description": "leaves: collapse all leaf nodes, all: collapse all nodes, none: expand all nodes, root: expand root only (default: leaves)",
           "order": 16
         },
