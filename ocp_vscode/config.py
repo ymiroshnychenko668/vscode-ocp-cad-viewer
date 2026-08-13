@@ -65,79 +65,6 @@ __all__ = [
     "check_deprecated",
 ]
 
-# The keys of the viewer's own state that survive into a show's config.
-#
-# `Config.workspace_filter` uses this list to decide which of the viewer's
-# reported state survives into the next show, so it has to name every key the
-# user can change from the toolbar - the toggles, clip, zebra and studio, the
-# active tab, explode and the analysis tool. A shorter list, such as one naming
-# only the keys this client stores in its settings, would let a second show()
-# reset the user's toolbar to the workspace defaults.
-
-WORKSPACE_CONFIG_KEYS = (
-    "ambient_intensity",
-    "analysis_tool",
-    "angular_tolerance",
-    "axes",
-    "axes0",
-    "black_edges",
-    "center_grid",
-    "clip_intersection",
-    "clip_normal_0",
-    "clip_normal_1",
-    "clip_normal_2",
-    "clip_object_colors",
-    "clip_planes",
-    "clip_slider_0",
-    "clip_slider_1",
-    "clip_slider_2",
-    "collapse",
-    "default_color",
-    "default_edgecolor",
-    "default_facecolor",
-    "default_opacity",
-    "default_thickedgecolor",
-    "default_vertexcolor",
-    "deviation",
-    "direct_intensity",
-    "explode",
-    "glass",
-    "grid",
-    "grid_font_size",
-    "metalness",
-    "modifier_keys",
-    "orbit_control",
-    "ortho",
-    "pan_speed",
-    "rotate_speed",
-    "roughness",
-    "states",
-    "studio_4k_env_maps",
-    "studio_ao_intensity",
-    "studio_background",
-    "studio_env_intensity",
-    "studio_env_rotation",
-    "studio_environment",
-    "studio_exposure",
-    "studio_shadow_intensity",
-    "studio_shadow_softness",
-    "studio_texture_mapping",
-    "studio_tone_mapping",
-    "tab",
-    "theme",
-    "ticks",
-    "tools",
-    "transparent",
-    "tree_width",
-    "up",
-    "zebra_color_scheme",
-    "zebra_count",
-    "zebra_direction",
-    "zebra_mapping_mode",
-    "zebra_opacity",
-    "zoom_speed",
-)
-
 # The keywords that belong to other hosts. The show signature is the superset of
 # every client's, so a key one host owns is a key another has to refuse - and
 # refusing it by name is what tells a user their `anchor=` went nowhere instead
@@ -152,7 +79,7 @@ EXCLUDE_KEYS = ("cad_width", "height", "viewer", "anchor", "pinning")
 # instance at a viewer, and a Session built on a different one would not hear
 # about it.
 session = Session(comms)
-config = Config(session, WORKSPACE_CONFIG_KEYS, EXCLUDE_KEYS)
+config = Config(session, EXCLUDE_KEYS)
 
 # Bound methods, not wrappers: the signature is the documentation for these two,
 # and a wrapper would have to restate fifty keywords to keep completion on them.

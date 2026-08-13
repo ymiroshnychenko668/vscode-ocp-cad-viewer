@@ -44,7 +44,12 @@ export class OCPCADController {
     statusBarItem: vscode.StatusBarItem;
     view: vscode.Webview | undefined;
     port: number;
-    viewer_message = "{}";
+    // An object, not the string "{}": it is JSON.stringify'd into the status
+    // reply, and a string would arrive in Python as a str where a dict is
+    // expected - a show() before the webview has pushed its first status
+    // would fail on it. An empty object is the honest answer instead: no
+    // viewer has reported anything changed yet.
+    viewer_message: Record<string, any> = {};
     splash: boolean = true;
     private backendHasRegistered = false;
 
