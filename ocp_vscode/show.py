@@ -41,6 +41,7 @@ from ocp_viewer_core.show import Viewer, ignore_camera_warnings, none_filter
 from ocp_vscode.config import config
 
 __all__ = [
+    "Animation",
     "show",
     "show_object",
     "remove_object",
@@ -86,3 +87,7 @@ unset_colormap = viewer.unset_colormap
 # The animation module resolves the paths a user names against the last
 # tessellated tree, which is the Viewer's now rather than a module global.
 get_last_paths = viewer.get_last_paths
+
+# The core's Animation, bound like the show family: `Animation()` constructs
+# an animation over this viewer's last show.
+Animation = viewer.animation

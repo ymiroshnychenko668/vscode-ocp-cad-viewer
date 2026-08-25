@@ -5,7 +5,10 @@ of them wants the same tab10, and `_show` recognises a colormap by a base class
 that has to be one class rather than one per host.
 
 Kept as a module so that `from ocp_vscode.colors import ColorMap` still names
-something.
+something. `get_colormap` was module-level here before the colormap in force
+moved onto the Viewer; the re-export from show.py keeps the historic deep
+import valid, and it is the same bound function as `from ocp_vscode import
+get_colormap`.
 """
 
 #
@@ -26,4 +29,6 @@ something.
 
 from ocp_viewer_core.colors import BaseColorMap, ColorMap, web_to_rgb
 
-__all__ = ["BaseColorMap", "ColorMap", "web_to_rgb"]
+from .show import get_colormap
+
+__all__ = ["BaseColorMap", "ColorMap", "get_colormap", "web_to_rgb"]
