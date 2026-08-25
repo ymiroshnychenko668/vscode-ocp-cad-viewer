@@ -36,6 +36,7 @@ Standalone OCP viewer is now part of the package ocp_viewer
 
     Install it via `[uv] pip install ocp_viewer`
     Run it via     `python -m ocp_viewer`
+    and use        `from ocp_viewer import show, ...`
 """
 
 
