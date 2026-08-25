@@ -12,6 +12,7 @@ p2 = Box(1, 1, 1)
 show(
     p2,
     debug=True,
+    grid=(True, False, False),
     # clip_intersection=False,
     # clip_planes=False,
     # clip_object_colors=False,
