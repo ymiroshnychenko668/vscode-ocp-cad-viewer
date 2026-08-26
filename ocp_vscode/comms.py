@@ -8,7 +8,7 @@ never this package's.
 What is left here is what is genuinely VS Code's: the sentence printed when
 several viewers are open and the editor is about to raise an input box, and the
 module-level `set_port` / `get_port` / `find_and_set_port` that scripts and
-`docs/ports.md` have always had.
+the docs site's "Addressing a viewer" page have always had.
 """
 
 #

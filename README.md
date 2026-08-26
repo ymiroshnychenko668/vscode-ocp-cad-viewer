@@ -60,7 +60,7 @@ show(cq.Workplane().box(1, 2, 3))
 
         ![](screenshots/cadquery_installed.png)
 
-    - Ignore the quick starts and use the "Library Manager" to install the libraries via `pip` (per default, this can be changed in the VS Code settings). Install the needed library by pressing the down-arrow behind the library name (hover over the library name to see the button) in the "Library Manager" section of the _OCP CAD Viewer_ sidebar. For more details, see [here](./docs/install.md)
+    - Ignore the quick starts and use the "Library Manager" to install the libraries via `pip` (per default, this can be changed in the VS Code settings). Install the needed library by pressing the down-arrow behind the library name (hover over the library name to see the button) in the "Library Manager" section of the _OCP CAD Viewer_ sidebar. For more details, see [here](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/)
 
     Quickstart will also
     - (optionally) install the the [Jupyter extension for VS Code from Microsoft](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter)
@@ -71,7 +71,7 @@ show(cq.Workplane().box(1, 2, 3))
 
 - Do not use the _OCP CAD Viewer_ logo to verify your _OCP CAD Viewer_ settings! The logo overwrites all your settings in VS Code with its own settings to always look the same on each instance. Use a simple own model for checking your configuration
 
-- If you run into issues, see [Troubleshooting](docs/troubleshooting.md)
+- If you run into issues, see [Troubleshooting](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/troubleshooting/)
 
 ### Installation via CLI
 
@@ -97,7 +97,7 @@ Since this is a python extension, it is recommended to install/activate a virtua
 Notes:
 
 - The extension is in pypi only [pypi](https://pypi.org/project/ocp-vscode/), so for conda, mamba or micromamba environments `pip` or `uv pip` needs to be used.
-- If you want to use the Studio mode with MaterialX support, see [PBR Studio](docs/pbr_studio.md#material-setup)
+- If you want to use the Studio mode with MaterialX support, see [PBR Studio](https://bernhard-42.github.io/ocp_viewer_docs/pbr_studio/#material-setup)
 
 ### Installation in code-server
 
@@ -114,7 +114,7 @@ This extension is _not_ available on the [OpenVSX marketplace](https://open-vsx.
 The simplest way to run a Python script with OCP CAD Viewer is via VS Code's built-in **Run** menu:
 
 - Edit the file as usual. Make sure `from ocp_vscode import ...` (or `import ocp_vscode`) is somewhere in the file — this matches the default `OcpCadViewer.advanced.autostartTriggers` and starts the viewer automatically when the file is opened.
-- Use **Run > Run Without Debugging** (`Ctrl-F5` / on macOS `⌃F5`) for a plain run, or **Run > Start Debugging** (`F5`) to run under the Python debugger with visual debugging enabled (see [docs/debug.md](docs/debug.md)).
+- Use **Run > Run Without Debugging** (`Ctrl-F5` / on macOS `⌃F5`) for a plain run, or **Run > Start Debugging** (`F5`) to run under the Python debugger with visual debugging enabled (see [docs/debug.md](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/visual_debugging/)).
 - Each `show(...)` call in your script is sent to the running viewer. If more than one viewer is open, `show` prompts in the terminal to choose which port to send to; call `set_port(<port>)` explicitly to skip the prompt.
 
 ### Running code using Jupyter extension
@@ -127,68 +127,68 @@ The simplest way to run a Python script with OCP CAD Viewer is via VS Code's bui
 
 ### Standalone mode
 
-Standalone mode allows you to use OCP CAD Viewer without VS Code: `python -m ocp_vscode`. This starts a Flask server reachable at `http://127.0.0.1:<port>` (default `http://127.0.0.1:3939`). See [docs/standalone.md](docs/standalone.md) for details, including the full CLI reference and how to run it in Docker.
+Standalone mode allows you to use OCP CAD Viewer without VS Code: `python -m ocp_vscode`. This starts a Flask server reachable at `http://127.0.0.1:<port>` (default `http://127.0.0.1:3939`). See [docs/standalone.md](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_viewer/installation/) for details, including the full CLI reference and how to run it in Docker.
 
 ### Debugging code with visual debugging
 
-After each step, the debugger checks all variables in `locals()` for being CAD objects and displays them with their variable name. See [docs/debug.md](docs/debug.md) for details.
+After each step, the debugger checks all variables in `locals()` for being CAD objects and displays them with their variable name. See [docs/debug.md](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/visual_debugging/) for details.
 
 ### Library Manager
 
-The "Library Manager" in the _OCP CAD Viewer_ sidebar lets you install or upgrade _build123d_, _cadquery_, _ipykernel_ and _ocp_tessellate_ from VS Code. See [docs/install.md](docs/install.md) for the default install commands, placeholder substitution, and `uv add` override.
+The "Library Manager" in the _OCP CAD Viewer_ sidebar lets you install or upgrade _build123d_, _cadquery_, _ipykernel_ and _ocp_tessellate_ from VS Code. See [docs/install.md](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/) for the default install commands, placeholder substitution, and `uv add` override.
 
 ### Extra topics
 
 #### Getting started
 
-- [Quickstart experience on Windows](docs/quickstart.md)
-- [Install Libraries](docs/install.md)
-- [Best practices](docs/best_practices.md)
+- [Quickstart experience on Windows](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/#quickstart)
+- [Install Libraries](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/)
+- [Best practices](https://bernhard-42.github.io/ocp_viewer_docs/config/)
 
 #### Working with the viewer
 
-- [Ports and connecting to a viewer](docs/ports.md)
-- [Config files (`~/.ocpvscode`, `~/.ocpvscode_standalone`)](docs/config_files.md)
-- [Use Jupyter to execute code](docs/run.md)
-- [Standalone mode (use without VS Code)](docs/standalone.md)
-- [Debug code with visual debugging](docs/debug.md)
-- [Measurement tools](docs/measure.md)
-- [Object selection tool](docs/selector.md)
-- [Physical based rendering Studio](docs/pbr_studio.md)
-- [ImageFace — use a 2-D image as a reference plane](docs/image_face.md)
+- [Ports and connecting to a viewer](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/addressing/)
+- [Config files (`~/.ocpvscode`, `~/.ocpvscode_standalone`)](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/addressing/)
+- [Use Jupyter to execute code](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/visual_debugging/#running-cell-by-cell-with-the-jupyter-extension)
+- [Standalone mode (use without VS Code)](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_viewer/installation/)
+- [Debug code with visual debugging](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/visual_debugging/)
+- [Measurement tools](https://bernhard-42.github.io/ocp_viewer_docs/measure/)
+- [Object selection tool](https://bernhard-42.github.io/ocp_viewer_docs/selector/)
+- [Physical based rendering Studio](https://bernhard-42.github.io/ocp_viewer_docs/pbr_studio/)
+- [ImageFace — use a 2-D image as a reference plane](https://bernhard-42.github.io/ocp_viewer_docs/image_face/)
 
 #### Python `show*` commands
 
-- [Use the `show` command](docs/show.md)
-- [Use the `show_object` command](docs/show_object.md)
-- [Use the `push_object` and `show_objects` command](docs/push_object.md)
-- [Use the `show_all` command](docs/show_all.md)
-- [Use the `set_viewer_config` command](docs/set_viewer_config.md)
+- [Use the `show` command](https://bernhard-42.github.io/ocp_viewer_docs/show/)
+- [Use the `show_object` command](https://bernhard-42.github.io/ocp_viewer_docs/show_object/)
+- [Use the `push_object` and `show_objects` command](https://bernhard-42.github.io/ocp_viewer_docs/push_object/)
+- [Use the `show_all` command](https://bernhard-42.github.io/ocp_viewer_docs/show_all/)
+- [Use the `set_viewer_config` command](https://bernhard-42.github.io/ocp_viewer_docs/set_viewer_config/)
 
 #### Python API reference
 
-- [Additional Python API](docs/api.md) (`save_screenshot`, `status`, `set_port`, …)
-- [Animation](docs/animation.md)
-- [Color maps](docs/colormaps.md)
-- [Enums reference](docs/enums.md) (`Camera`, `Collapse`, `Render`, `AnalysisTool`, `UiTab`, `Studio*`)
+- [Additional Python API](https://bernhard-42.github.io/ocp_viewer_docs/api/) (`save_screenshot`, `status`, `set_port`, …)
+- [Animation](https://bernhard-42.github.io/ocp_viewer_docs/animation/)
+- [Color maps](https://bernhard-42.github.io/ocp_viewer_docs/colormaps/)
+- [Enums reference](https://bernhard-42.github.io/ocp_viewer_docs/enums/) (`Camera`, `Collapse`, `Render`, `AnalysisTool`, `UiTab`, `Studio*`)
 
 #### VS Code reference
 
-- [VS Code Settings reference](docs/settings.md)
-- [VS Code Commands reference](docs/commands.md)
+- [VS Code Settings reference](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/workspace_config/)
+- [VS Code Commands reference](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/commands/)
 
 #### Examples and snippets
 
-- [Download examples for build123d or cadquery](docs/examples.md)
-- [Use the build123d snippets](docs/snippets.md)
+- [Download examples for build123d or cadquery](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/#downloading-examples)
+- [Use the build123d snippets](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/commands/#build123d-snippets-experimental)
 
 #### Other editors support
 
-- [Using OCP CAD Viewer with NeoVim](docs/editors.md)
+- [Using OCP CAD Viewer with NeoVim](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_viewer/neovim/)
 
 #### Help
 
-- [Troubleshooting](docs/troubleshooting.md)
+- [Troubleshooting](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/troubleshooting/)
 
 ## Development
 

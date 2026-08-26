@@ -57,9 +57,14 @@ function check_upgrade(libraryManager: LibraryManagerProvider) {
     const ocp_vscode_lib = libraryManager.installed["ocp_vscode"];
 
     if (ocp_vscode_lib) {
-        if (semver.eq(ocp_vscode_lib[0], version)) {
+        // major.minor is the contract, the patch level is each side's own -
+        // a Python-only fix must not demand an extension release, nor the
+        // other way round. `semver.diff` is null for equal versions and
+        // "patch"/"prepatch" when only the patch level differs.
+        const diff = semver.diff(ocp_vscode_lib[0], version);
+        if (diff === null || diff === "patch" || diff === "prepatch") {
             output.info(
-                `extension.check_upgrade: ocp_vscode library version ${ocp_vscode_lib[0]} matches extension version ${version}`
+                `extension.check_upgrade: ocp_vscode library version ${ocp_vscode_lib[0]} is compatible with extension version ${version} (major.minor match)`
             );
         } else if (semver.gt(ocp_vscode_lib[0], version)) {
             vscode.window.showErrorMessage(
