@@ -60,7 +60,7 @@ show(cq.Workplane().box(1, 2, 3))
 
         ![](screenshots/cadquery_installed.png)
 
-    - Ignore the quick starts and use the "Library Manager" to install the libraries via `pip` (per default, this can be changed in the VS Code settings). Install the needed library by pressing the down-arrow behind the library name (hover over the library name to see the button) in the "Library Manager" section of the _OCP CAD Viewer_ sidebar. For more details, see [here](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/)
+    - Ignore the quick starts and use the "Library Manager" to install the libraries via `pip` (per default, this can be changed in the VS Code settings). Install the needed library by pressing the down-arrow behind the library name (hover over the library name to see the button) in the "Library Manager" section of the _OCP CAD Viewer_ sidebar. For more details, see [here](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/managers/)
 
     Quickstart will also
     - (optionally) install the the [Jupyter extension for VS Code from Microsoft](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter)
@@ -127,7 +127,7 @@ The simplest way to run a Python script with OCP CAD Viewer is via VS Code's bui
 
 ### Standalone mode
 
-Standalone mode allows you to use OCP CAD Viewer without VS Code: `python -m ocp_vscode`. This starts a Flask server reachable at `http://127.0.0.1:<port>` (default `http://127.0.0.1:3939`). See [docs/standalone.md](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_viewer/installation/) for details, including the full CLI reference and how to run it in Docker.
+The standalone viewer became its own package, [ocp_viewer](https://github.com/bernhard-42/ocp-viewer): `pip install ocp_viewer`, then `python -m ocp_viewer` starts a server reachable at `http://127.0.0.1:3939`. See [OCP Viewer](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_viewer/installation/) in the documentation, including the full CLI reference and how to run it in Docker.
 
 ### Debugging code with visual debugging
 
@@ -135,14 +135,16 @@ After each step, the debugger checks all variables in `locals()` for being CAD o
 
 ### Library Manager
 
-The "Library Manager" in the _OCP CAD Viewer_ sidebar lets you install or upgrade _build123d_, _cadquery_, _ipykernel_ and _ocp_tessellate_ from VS Code. See [docs/install.md](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/) for the default install commands, placeholder substitution, and `uv add` override.
+The "Library Manager" in the _OCP CAD Viewer_ sidebar lets you install or upgrade _build123d_, _cadquery_, _ipykernel_ and _ocp_tessellate_ from VS Code. See [Viewer and Library Manager](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/managers/) for the default install commands, placeholder substitution, and `uv add` override.
 
 ### Extra topics
 
+The full documentation lives at [bernhard-42.github.io/ocp_viewer_docs](https://bernhard-42.github.io/ocp_viewer_docs/) — the [VS Code CAD Viewer chapter](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/) covers this viewer's specifics; everything below is a deep link into it.
+
 #### Getting started
 
-- [Quickstart experience on Windows](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/#quickstart)
-- [Install Libraries](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/)
+- [Quickstart experience on Windows](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/#installation-within-vs-code)
+- [Viewer and Library Manager](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/managers/)
 - [Best practices](https://bernhard-42.github.io/ocp_viewer_docs/config/)
 
 #### Working with the viewer
@@ -179,7 +181,7 @@ The "Library Manager" in the _OCP CAD Viewer_ sidebar lets you install or upgrad
 
 #### Examples and snippets
 
-- [Download examples for build123d or cadquery](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/installation/#downloading-examples)
+- [Download examples for build123d or cadquery](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/managers/#the-library-manager)
 - [Use the build123d snippets](https://bernhard-42.github.io/ocp_viewer_docs/viewers/ocp_vscode/commands/#build123d-snippets-experimental)
 
 #### Other editors support
