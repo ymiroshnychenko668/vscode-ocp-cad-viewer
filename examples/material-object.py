@@ -6,17 +6,6 @@ from ocp_vscode import *
 from ocp_viewer_core.utils import create_shader_ball
 from threejs_materials import PbrProperties
 
-import warnings
-
-
-(
-    warnings.warn(
-        "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \n"
-        "The required type of build123d's shape.material will change"
-        "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \n",
-        category=FutureWarning,
-    )
-)
 
 car_base = PbrProperties.from_gpuopen("Car Paint")
 

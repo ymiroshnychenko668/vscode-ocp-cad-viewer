@@ -12,7 +12,6 @@ p2 = Box(1, 1, 1)
 show(
     p2,
     debug=True,
-    grid=(True, False, False),
     # clip_intersection=False,
     # clip_planes=False,
     # clip_object_colors=False,
@@ -40,7 +39,7 @@ show(Sphere(0.5))
 set_viewer_config(clip_object_colors=False)
 
 # %%
-show(Sphere(0.5), reset_camera=True)
+show(Sphere(0.5), reset_camera=Camera.RESET)
 
 # %%
 
@@ -50,7 +49,7 @@ show(
     grid_font_size=16,
     grid=(True, False, False),
     clip_planes=False,
-    reset_camera=True,
+    reset_camera=Camera.RESET,
 )
 set_viewer_config(tab="tree")
 # %%
@@ -59,7 +58,7 @@ show(Box(1, 2, 3).faces().edges().vertices())
 # %%
 show(Box(1, 2, 3).faces().edges())
 # %%
-show(Box(1, 2, 3).faces())
+show(Box(1, 2, 3).faces().filter_by(Axis.Y))
 # %%
 with BuildPart(Pos(1, -1, 1)) as p:
     Box(0.1, 0.1, 2)

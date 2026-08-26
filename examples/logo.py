@@ -2,12 +2,13 @@
 import json
 
 import orjson
-from bd_ext import CleanText  # see https://github.com/bernhard-42/bd_ext/tree/main
+from bd_ext import CleanText
 from build123d import *
 
 from ocp_vscode import *
 from ocp_vscode.comms import default
-from ocp_vscode.show import _convert
+from ocp_vscode.show import viewer
+
 
 # %%
 
@@ -99,7 +100,11 @@ show(
     target=target,
 )
 # %%
-c = _convert(
+import os
+
+os.environ["OCP_VIEWER_PYTEST"] = "0"  # no memory buffer with "1"
+
+c = viewer._convert(
     logo,
     eye,
     colors=[(85, 160, 227), "#333"],
@@ -115,8 +120,9 @@ c = _convert(
 )
 
 # %%
-with open("logo.json", "w") as fp:
-    fp.write(json.dumps(c[0], separators=(",", ":")))
+if os.environ["OCP_VIEWER_PYTEST"] != 1:
+    with open("logo.json", "w") as fp:
+        fp.write(json.dumps(c[0], separators=(",", ":")))
 
 # %%
 with open("mapping.json", "w") as fp:

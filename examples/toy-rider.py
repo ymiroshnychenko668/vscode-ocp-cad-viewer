@@ -1,18 +1,9 @@
 from pathlib import Path
-import warnings
 
 from build123d import *
 from ocp_vscode import *
 from threejs_materials import PbrProperties
-
-(
-    warnings.warn(
-        "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \n"
-        "The required type of build123d's shape.material will change"
-        "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \n",
-        category=FutureWarning,
-    )
-)
+from bd_materials import metals, plastics, textile, glass, finishes, wood
 
 try:
     model = import_step(Path.home() / "Downloads" / "Toy Rider S2022 ASM stp.STEP")
@@ -25,24 +16,26 @@ show(Rot(90, 0, 0) * model)
 # %%
 
 #
-# PbrProperties definition
+# materials definition
 #
 
-car_red = PbrProperties.from_gpuopen("Car Paint").override(color=(0.5, 0, 0))
-chrome = PbrProperties.from_gpuopen("Chrome")
-rubber = PbrProperties.from_gpuopen("Rubber").override(color=(0.06, 0.06, 0.06))
-glass = PbrProperties.from_gpuopen("Glass")
-steel = PbrProperties.from_gpuopen("Stainless Steel Brushed")
-fabric = PbrProperties.from_gpuopen("Midnight Blue Heavy Fabric")
-alu = PbrProperties.from_gpuopen("Aluminum Brushed")
-alu_matte = PbrProperties.from_gpuopen("Aluminum Matte").scale(2, 2)
-leather = PbrProperties.from_gpuopen("TH: Brown Leather")
-wood = PbrProperties.from_gpuopen("Mahogany Varnished").scale(2, 2)
-plastic = PbrProperties.from_ambientcg("Plastic 012 B")
-acrylic_white = PbrProperties.from_physicallybased("Plastic (Acrylic)")
-acrylic_red = PbrProperties.from_physicallybased("Plastic (Acrylic)").override(
-    color="red"
+car_red = metals.stainless(finish=finishes.spray_paint(color=(0.5, 0, 0)))
+chrome = metals.stainless(finish=finishes.chrome())
+rubber = plastics.rubber(color=(0.06, 0.06, 0.06))
+glass_ = glass.soda_lime()
+steel = metals.stainless(finish=finishes.brushed())
+fabric = textile.custom_textile(
+    "heavy", 1.0, pbr=PbrProperties.from_gpuopen("Midnight Blue Heavy Fabric")
 )
+alu = metals.aluminum(finish=finishes.brushed())
+alu_matte = metals.aluminum(finish=finishes.fine_sanding())
+leather = textile.leather()
+wood_ = wood.custom_wood(
+    "mahagony", 1.0, pbr=PbrProperties.from_gpuopen("Mahogany Varnished")
+)
+plastic = plastics.petg(color="black")
+acrylic_white = plastics.pc(color="white")
+acrylic_red = plastics.pc(color="red")
 
 
 # %%
@@ -68,7 +61,7 @@ def convert(model):
         "Gear": chrome,
         "Peddle": chrome,
         "Bucket": leather,
-        "DashandConsole": wood,
+        "DashandConsole": wood_,
         "Floor": fabric,
         "Radio": plastic,
         "Visor": plastic,
@@ -76,10 +69,6 @@ def convert(model):
         "TailLamp": acrylic_red,
         "Streeing": leather,
     }
-
-    def assign_material(obj, material):
-        obj.material = material
-        obj.color = material.interpolate_color()
 
     def walk(obj, ind=""):
         if hasattr(obj, "children") and obj.children:
@@ -97,22 +86,22 @@ def convert(model):
         else:
             if "wheel" in obj.label:
                 objects = list(obj)
-                assign_material(objects[0], chrome)
-                assign_material(objects[1], rubber)
+                objects[0].material = chrome
+                objects[1].material = rubber
                 obj = Compound(label=obj.label, children=objects)
             elif "Windshield" in obj.label:
                 objects = list(obj)
                 objects[0].label = "WindShield"
                 objects[1].label = "Frame"
-                assign_material(objects[0], glass)
-                assign_material(objects[1], chrome)
+                objects[0].material = glass_
+                objects[1].material = chrome
                 obj = Compound(label=obj.label, children=objects)
             elif "WindShield" in obj.label:
                 return None
             else:
                 for k, v in color_mapping.items():
                     if k in obj.label:
-                        assign_material(obj, v)
+                        obj.material = v
             return obj
 
     return walk(model)

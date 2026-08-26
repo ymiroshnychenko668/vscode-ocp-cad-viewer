@@ -1,20 +1,11 @@
 import time
-import warnings
 
 from build123d import *
 from ocp_vscode import *
 from threejs_materials import PbrProperties
+from bd_materials import metals, plastics, glass, finishes
 
-(
-    warnings.warn(
-        "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \n"
-        "The required type of build123d's shape.material will change"
-        "\n= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \n",
-        category=FutureWarning,
-    )
-)
-
-mcc = (Align.MIN, Align.CENTER, Align.CENTER)
+mc = (Align.MIN, Align.CENTER)
 ccm = (Align.CENTER, Align.CENTER, Align.MIN)
 ccM = (Align.CENTER, Align.CENTER, Align.MAX)
 
@@ -23,18 +14,19 @@ ccM = (Align.CENTER, Align.CENTER, Align.MAX)
 #
 
 # Use a GPUOpen material
-alu_hex = PbrProperties.from_gpuopen("Aluminum Hexagon")
+alu_hex = metals.custom_metal(
+    "alu_hex", 2700, pbr=PbrProperties.from_gpuopen("Aluminum Hexagon")
+)
 
 # Use a GPUOpen material and override the glass behavior
-glass = PbrProperties.from_gpuopen("Glass").override(transmission=0.98, thickness=0.8)
+glass_ = glass.soda_lime(thickness_mm=0.8)
 
 # Use an AmbientCG material, and scale the texture to 2 in u and v direction
-metal = PbrProperties.from_ambientcg("Metal 049 C").scale(2, 2)
+metal = metals.stainless(finish=finishes.brushed())
 
 # Use a PhysicallyBased material and override color for two material instances
-light = PbrProperties.from_physicallybased("Plastic (Acrylic)")
-red_light = light.override(color=(1, 0, 0))
-yellow_light = light.override(color="yellow")
+light = plastics.pc(color=(1, 0, 0))
+
 
 #
 # The object
@@ -43,14 +35,14 @@ yellow_light = light.override(color="yellow")
 e = Ellipse(10, 3)
 e2 = offset(e, -0.2)
 e -= e2
-e -= Rectangle(12, 6, align=mcc)
+e -= Rectangle(12, 6, align=mc)
 
 e3 = offset(e2, -0.1)
 e2 -= e3
-e2 -= Rectangle(12, 6, align=mcc)
+e2 -= Rectangle(12, 6, align=mc)
 
-body = Rot(90, 0, 0) * revolve(e, Axis.Y)
-inner = Rot(90, 0, 0) * revolve(e2, Axis.Y)
+body = Rot(90, 0, 0) * revolve(e.face(), Axis.Y)
+inner = Rot(90, 0, 0) * revolve(e2.face(), Axis.Y)
 mask = Cylinder(4, 3, align=ccm)
 body = body - mask
 inner = inner - mask
@@ -72,17 +64,11 @@ for i, l in enumerate(lights):
 #
 
 body.material = metal
-body.color = "grey"
-
 inner.material = alu_hex
-inner.color = metal.interpolate_color()
-
-window.material = glass
-window.color = glass.interpolate_color()
+window.material = glass_
 
 for i, l in enumerate(lights):
-    l.material = red_light if i % 2 == 0 else yellow_light
-    l.color = l.material.interpolate_color()
+    l.material = light
 
 # %%
 

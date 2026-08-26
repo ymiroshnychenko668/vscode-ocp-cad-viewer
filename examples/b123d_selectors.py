@@ -2,9 +2,6 @@
 from build123d import *
 import cadquery as cq
 from ocp_vscode import *
-from OCP import __version__
-
-ocp_version = 79 if "7.9" in __version__ else 78
 
 # %% CadQuery
 
@@ -40,10 +37,7 @@ b -= Cylinder(0.3, 0.5, align=ccm)
 b -= Cylinder(0.4, 0.3, align=ccm)
 b -= Box(0.3, 1.1, 0.5, align=ccm)
 
-if ocp_version == 78:
-    edges = select_edges(b, [38, 40, 35, 37, 28, 26, 44, 42])
-else:
-    edges = select_edges(b, [35, 37, 28, 30, 17, 15, 40, 44])
+edges = select_edges(b, [35, 37, 28, 30, 17, 15, 40, 44])
 
 show(b, edges)
 
@@ -51,20 +45,14 @@ show(b, edges)
 
 b = fillet(edges, 0.05)
 
-if ocp_version == 78:
-    edges = select_edges(b, [3, 54])
-else:
-    edges = select_edges(b, [3, 56])
+edges = select_edges(b, [3, 56])
 
 show(b, edges)
 # %%
 
 b = fillet(edges, 0.02)
 
-if ocp_version == 78:
-    edges = select_edges(b, [56, 52])
-else:
-    edges = select_edges(b, [44, 48])
+edges = select_edges(b, [44, 48])
 
 show(b, edges)
 # %%
