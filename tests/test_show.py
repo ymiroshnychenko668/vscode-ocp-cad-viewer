@@ -198,11 +198,9 @@ class ShowAllTests(Tests):
 
         r = show_all()
 
-        self.get(r)
-        self.assertPartsElementsEqual(
-            "id",
-            [],
-        )
+        # Aligns are not drawable, so the namespace is empty and show_all
+        # clears the viewer (skipped under pytest) and returns None.
+        self.assertIsNone(r)
 
     def test_show_pos_list(self):
         a = [Pos(1, 1)]
