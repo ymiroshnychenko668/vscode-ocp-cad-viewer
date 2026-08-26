@@ -4,7 +4,7 @@ from pathlib import Path
 
 from build123d import *
 from ocp_vscode import *
-from ocp_vscode.utils import create_shader_ball
+from ocp_viewer_core.utils import create_shader_ball
 from threejs_materials import PbrProperties
 
 # threejs-material
