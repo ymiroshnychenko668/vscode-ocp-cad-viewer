@@ -27,8 +27,35 @@ get_colormap`.
 # limitations under the License.
 #
 
-from ocp_viewer_core.colors import BaseColorMap, ColorMap, web_to_rgb
+from ocp_viewer_core.colors import (
+    BaseColorMap,
+    ColorMap,
+    GoldenRatioColormap,
+    ListedColorMap,
+    SeededColormap,
+    SegmentedColorMap,
+    hex_to_rgb,
+    hsv_mapper,
+    matplotlib_mapper,
+    random_rgb_mapper,
+    web_to_rgb,
+)
 
-from .show import get_colormap
+from .show import get_colormap, set_colormap, unset_colormap
 
-__all__ = ["BaseColorMap", "ColorMap", "get_colormap", "web_to_rgb"]
+__all__ = [
+    "BaseColorMap",
+    "ColorMap",
+    "GoldenRatioColormap",
+    "ListedColorMap",
+    "SeededColormap",
+    "SegmentedColorMap",
+    "get_colormap",
+    "hex_to_rgb",
+    "hsv_mapper",
+    "matplotlib_mapper",
+    "random_rgb_mapper",
+    "set_colormap",
+    "unset_colormap",
+    "web_to_rgb",
+]
