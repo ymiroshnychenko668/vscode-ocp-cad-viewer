@@ -599,7 +599,10 @@
               "from build123d import *"
             ],
             "ocp_vscode": [
-              "from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults"
+              "from ocp_vscode import *"
+            ],
+            "cadquery_ocp": [
+              "import OCP"
             ],
             "jupyter": [
               "\n# %%\n"

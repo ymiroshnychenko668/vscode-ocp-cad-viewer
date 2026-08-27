@@ -289,16 +289,9 @@ export class LibraryManagerProvider implements vscode.TreeDataProvider<Library> 
     pasteImport(library: string) {
         const editor = getEditor();
         if (editor !== undefined) {
-            if (library === "ocp_vscode" && this.statusManager.getPort() === "") {
-                vscode.window.showErrorMessage("OCP CAD Viewer not running");
-            } else {
-                let importCmd = Object.assign([], this.codeSnippets[library]);
-                if (library === "ocp_vscode") {
-                    importCmd.push(`set_port(${this.statusManager.getPort()})`);
-                }
-                let snippet = new vscode.SnippetString(importCmd.join("\n") + "\n");
-                editor?.insertSnippet(snippet);
-            }
+            let importCmd = Object.assign([], this.codeSnippets[library]);
+            let snippet = new vscode.SnippetString(importCmd.join("\n") + "\n");
+            editor?.insertSnippet(snippet);
         } else {
             vscode.window.showErrorMessage("No editor open");
         }
