@@ -39,7 +39,6 @@ from ocp_tessellate.convert import (
     combined_bb,
     get_normal_len,
     tessellate_group,
-    to_ocpgroup,
     Progress,
 )
 from ocp_tessellate.ocp_utils import (
@@ -61,6 +60,7 @@ from ocp_tessellate.utils import Color, Timer, numpy_to_buffer_json
 from threejs_materials import PbrProperties
 
 from ocp_vscode.colors import BaseColorMap, get_colormap
+from ocp_vscode.metadata import attach_metadata, to_ocpgroup
 from ocp_vscode.utils import is_build123d_material
 
 if os.environ.get("JUPYTER_CADQUERY") == "1":
@@ -405,6 +405,7 @@ def _tessellate(
         instances, shapes, mapping = tessellate_group(  # ty:ignore[invalid-assignment] (typing bug in ocp-tessellate)
             part_group, instances, params, progress, params.get("timeit", False)
         )
+        attach_metadata(part_group, shapes)
 
     # `params["states"]` is normally populated from `conf["states"]` (the
     # user's current tree selections, pulled from status() via combined_config
