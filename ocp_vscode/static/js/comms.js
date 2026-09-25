@@ -1,6 +1,10 @@
 function handleMessage(message) {
     console.log("Handling message");
-    window.postMessage(message, window.location.origin);
+    // Relay to this same window. A viewer served with a CSP sandbox (Crow's gateway
+    // does this) has an opaque origin, so window.location.origin never matches the
+    // recipient and the message would be dropped. The recipient is always this
+    // window, so "*" does not widen who receives it.
+    window.postMessage(message, "*");
 }
 
 class Comms {
